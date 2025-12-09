@@ -1,0 +1,14 @@
+node_modules/
+.env
+uploads/
+backend/config/firebase-service-account.json
+.vscode/
+.idea/
+.DS_Store
+dist/
+build/
+# Firebase configs for Flutter
+mobile/android/app/google-services.json
+mobile/ios/Runner/GoogleService-Info.plist
+mobile/lib/firebase_options.dart
+
