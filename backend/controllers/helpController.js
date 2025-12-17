@@ -1,7 +1,7 @@
 // controllers/helpController.js
 const db = require("../db");
 
-// ✅ جلب كل الأسئلة الشائعة
+//  جلب كل الأسئلة الشائعة
 exports.getFaqs = async (req, res) => {
   try {
     const [rows] = await db.promise().query("SELECT * FROM faqs ORDER BY id DESC");
@@ -12,7 +12,7 @@ exports.getFaqs = async (req, res) => {
   }
 };
 
-// ✅ (اختياري لاحقًا) إضافة سؤال جديد من لوحة الأدمن أو السنتر
+//  (اختياري لاحقًا) إضافة سؤال جديد من لوحة الأدمن أو السنتر
 exports.addFaq = async (req, res) => {
   try {
     const { question, answer } = req.body;
@@ -43,7 +43,7 @@ exports.submitQuestion = async (req, res) => {
       [user_id, student_id, question]
     );
 
-    res.status(201).json({ message: "Question submitted successfully ✅" });
+    res.status(201).json({ message: "Question submitted successfully " });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to submit question" });
@@ -51,7 +51,7 @@ exports.submitQuestion = async (req, res) => {
 
 };
 
-// ✅ رد السنتر على سؤال طالب
+//  رد السنتر على سؤال طالب
 exports.replyToQuestion = async (req, res) => {
   const { id } = req.params;
   const { reply } = req.body;
@@ -69,13 +69,13 @@ exports.replyToQuestion = async (req, res) => {
       return res.status(404).json({ error: "Question not found" });
     }
 
-    res.status(200).json({ message: "Reply sent successfully ✅" });
+    res.status(200).json({ message: "Reply sent successfully " });
   } catch (err) {
-    console.error("❌ Error sending reply:", err);
+    console.error(" Error sending reply:", err);
     res.status(500).json({ error: "Server error replying to question" });
   }
 };
-// 📌 للسنتر: جلب كل أسئلة الطلاب
+//  للسنتر: جلب كل أسئلة الطلاب
 exports.getAllStudentQuestions = async (req, res) => {
   try {
     const [rows] = await db
@@ -83,12 +83,12 @@ exports.getAllStudentQuestions = async (req, res) => {
       .query("SELECT * FROM student_questions ORDER BY created_at DESC");
     res.json(rows);
   } catch (err) {
-    console.error("❌ Error fetching student questions:", err);
+    console.error(" Error fetching student questions:", err);
     res.status(500).json({ error: "Server error fetching student questions" });
   }
 };
 
-// 📌 للطالب: جلب أسئلته فقط بناءً على studentId
+//  للطالب: جلب أسئلته فقط بناءً على studentId
 exports.getMyQuestions = async (req, res) => {
   const { studentId } = req.params;
   try {
@@ -100,7 +100,7 @@ exports.getMyQuestions = async (req, res) => {
       );
     res.json(rows);
   } catch (err) {
-    console.error("❌ Error fetching student questions:", err);
+    console.error(" Error fetching student questions:", err);
     res.status(500).json({ error: "Server error" });
   }
 };

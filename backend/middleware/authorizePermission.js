@@ -1,16 +1,17 @@
-// 📁 middleware/authorizePermission.js
-const permissions = require("../config/permissions");
+//  middleware/authorizePermission.js
 
 module.exports = (permissionKey) => {
   return (req, res, next) => {
-    const role = req.user?.role;
-    if (!role) {
-      return res.status(401).json({ message: "Not authenticated ❌" });
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authenticated " });
     }
 
-    const rolePermissions = permissions[role];
-    if (!rolePermissions || !rolePermissions[permissionKey]) {
-      return res.status(403).json({ message: "Access denied ❌" });
+    const permissions = req.user.permissions; //  جاية من DB
+
+    if (!permissions || !permissions.includes(permissionKey)) {
+      return res.status(403).json({
+        message: `Access denied Missing permission: ${permissionKey}`,
+      });
     }
 
     next();

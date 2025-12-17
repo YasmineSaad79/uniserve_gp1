@@ -1,6 +1,6 @@
 const db = require("../db");
 
-// 🔍 البحث العام (لكل الأدوار)
+//  البحث العام (لكل الأدوار)
 const globalSearch = async (req, res) => {
   try {
     const { q, role } = req.query;
@@ -8,7 +8,7 @@ const globalSearch = async (req, res) => {
 
     let results = [];
 
-    // 🟢 لو المستخدم طالب
+    // لو المستخدم طالب
     if (role === "student") {
       const [activities] = await db.promise().query(
         `SELECT 
@@ -22,7 +22,7 @@ const globalSearch = async (req, res) => {
         [`%${q}%`, `%${q}%`]
       );
 
-      // 🧹 تنظيف المسار وإرجاع فقط الجزء القابل للوصول
+      // تنظيف المسار وإرجاع فقط الجزء القابل للوصول
       results = activities.map((a) => ({
         ...a,
         image_url:
@@ -32,7 +32,7 @@ const globalSearch = async (req, res) => {
       }));
     }
 
-    // 🟣 لو المستخدم مركز خدمة
+    //  لو المستخدم مركز خدمة
     else if (role === "service") {
      const [students] = await db.promise().query(
   `SELECT 
@@ -77,7 +77,7 @@ const globalSearch = async (req, res) => {
 
     res.status(200).json(results);
   } catch (err) {
-    console.error("❌ Search error:", err);
+    console.error(" Search error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };

@@ -21,7 +21,7 @@ exports.getStudentSubmission = async (req, res) => {
 
     res.json(rows[0]);
   } catch (err) {
-    console.log("❌ Error getStudentSubmission:", err);
+    console.log(" Error getStudentSubmission:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -29,6 +29,7 @@ exports.getStudentSubmission = async (req, res) => {
 // ===============================================
 // POST: Student uploads signed submission file
 // ===============================================
+/*
 exports.uploadSubmissionFile = async (req, res) => {
   try {
     const { studentId, activityId } = req.body;
@@ -39,14 +40,14 @@ exports.uploadSubmissionFile = async (req, res) => {
 
     const filePath = "/uploads/submissions/" + req.file.filename;
 
-    // 🔥 1) امسحي أي submissions قديمة لنفس الطالب ولنفس النشاط
+    // 1) امسحي أي submissions قديمة لنفس الطالب ولنفس النشاط
     await db.promise().query(
       `DELETE FROM activity_submissions 
        WHERE student_id = ? AND activity_id = ?`,
       [studentId, activityId]
     );
 
-    // 🔥 2) أضيفي submission جديد دائماً
+    //  2) أضيفي submission جديد دائماً
     await db.promise().query(
       `INSERT INTO activity_submissions
         (student_id, activity_id, submitted_file_path, status, created_at)
@@ -60,11 +61,60 @@ exports.uploadSubmissionFile = async (req, res) => {
     });
 
   } catch (err) {
-    console.log("❌ uploadSubmission Error:", err);
+    console.log(" uploadSubmission Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+*/
+exports.uploadSubmissionFile = async (req, res) => {
+  try {
+    console.log(" BODY:", req.body);
+    console.log(" FILE:", req.file);
+
+    const studentId = req.body.studentId || req.body.student_id;
+    const activityId = req.body.activityId || req.body.activity_id;
+
+
+    if (!studentId || !activityId) {
+      return res.status(400).json({
+        message: "Missing studentId or activityId",
+        body: req.body
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const filePath = "/uploads/submissions/" + req.file.filename;
+
+    await db.promise().query(
+      `DELETE FROM activity_submissions 
+       WHERE student_id = ? AND activity_id = ?`,
+      [studentId, activityId]
+    );
+
+    await db.promise().query(
+      `INSERT INTO activity_submissions
+        (student_id, activity_id, submitted_file_path, status, created_at)
+       VALUES (?, ?, ?, 'submitted', NOW())`,
+      [studentId, activityId, filePath]
+    );
+
+    res.json({
+      message: "Submission uploaded successfully",
+      file: filePath,
+    });
+
+  } catch (err) {
+    console.log(" uploadSubmission Error:", err);
+    res.status(500).json({
+      message: "Server error",
+      error: err.message
+    });
+  }
+};
 
 // ===============================================
 // GET: All submissions for center to review
@@ -95,7 +145,7 @@ exports.getCenterSubmissions = async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error("❌ Error in getCenterSubmissions:", err);
+    console.error(" Error in getCenterSubmissions:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -114,7 +164,7 @@ exports.getStudentAllSubmissions = async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.log("❌ Error getStudentAllSubmissions:", err);
+    console.log(" Error getStudentAllSubmissions:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -220,7 +270,7 @@ exports.rejectSubmission = async (req, res) => {
     });
 
   } catch (err) {
-    console.log("❌ Error rejectSubmission:", err);
+    console.log(" Error rejectSubmission:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -308,7 +358,7 @@ exports.getCenterSummary = async (req, res) => {
     res.json(Object.values(summary));
 
   } catch (err) {
-    console.log("❌ Error getCenterSummary:", err);
+    console.log(" Error getCenterSummary:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

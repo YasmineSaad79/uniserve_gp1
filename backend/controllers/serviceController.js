@@ -5,7 +5,7 @@ exports.getCenterStudents = async (req, res) => {
   try {
     const centerUserId = req.user.id; // مستخدم المركز نفسه (من JWT)
 
-    // 1️⃣ نجيب center_id من جدول center حسب user_id
+    // 1 نجيب center_id من جدول center حسب user_id
     const [centerRows] = await db
       .promise()
       .query("SELECT center_id FROM center WHERE user_id = ?", [
@@ -20,7 +20,7 @@ exports.getCenterStudents = async (req, res) => {
 
     const centerId = centerRows[0].center_id;
 
-    // 2️⃣ نجيب الطلاب اللي مرتبطين بهذا المركز من جدول students
+    // 2 نجيب الطلاب اللي مرتبطين بهذا المركز من جدول students
     const sql = `
       SELECT 
         u.id,
@@ -36,7 +36,7 @@ exports.getCenterStudents = async (req, res) => {
 
     return res.json(rows);
   } catch (err) {
-    console.error("❌ getCenterStudents:", err);
+    console.error(" getCenterStudents:", err);
     return res.status(500).json({
       message: "Internal server error",
     });

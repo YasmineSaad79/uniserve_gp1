@@ -1,7 +1,7 @@
 const db = require("../db");
 const { verifyToken } = require("../middleware/verifyToken.js");
 
-// ✅ جلب بيانات المركز الخدمي باستخدام التوكن
+//  جلب بيانات المركز الخدمي باستخدام التوكن
 exports.getServiceProfile = (req, res) => {
   const userId = req.user.id; // من التوكن
 
@@ -22,7 +22,7 @@ WHERE u.id = ? AND u.role = 'service_center'
 
   db.query(sql, [userId], (err, results) => {
     if (err) {
-      console.error("❌ Database error:", err);
+      console.error(" Database error:", err);
       return res.status(500).json({ message: "Database error" });
     }
 
@@ -45,7 +45,7 @@ WHERE u.id = ? AND u.role = 'service_center'
 const path = require("path");
 const fs = require("fs");
 
-// ✅ تحديث بيانات المركز الخدمي (الاسم + الإيميل + الصورة)
+//  تحديث بيانات المركز الخدمي (الاسم + الإيميل + الصورة)
 exports.updateServiceProfile = (req, res) => {
   const userId = req.user.id; // من التوكن
   const { full_name, email } = req.body;
@@ -54,14 +54,14 @@ exports.updateServiceProfile = (req, res) => {
     return res.status(400).json({ message: "No data provided for update" });
   }
 
-  // 📸 في حال تم رفع صورة جديدة
+  //  في حال تم رفع صورة جديدة
   let photoPath = null;
   if (req.files && req.files.photo && req.files.photo.length > 0) {
     const uploadedFile = req.files.photo[0];
     photoPath = `/uploads/${uploadedFile.filename}`;
   }
 
-  // 📦 نبني استعلام التحديث ديناميكيًا
+  //  نبني استعلام التحديث ديناميكيًا
   const updates = [];
   const params = [];
 
@@ -83,7 +83,7 @@ exports.updateServiceProfile = (req, res) => {
 
   db.query(sql, params, (err, result) => {
     if (err) {
-      console.error("❌ Error updating service profile:", err);
+      console.error(" Error updating service profile:", err);
       return res.status(500).json({ message: "Database update error" });
     }
 
@@ -92,7 +92,7 @@ exports.updateServiceProfile = (req, res) => {
     }
 
     res.status(200).json({
-      message: "Profile updated successfully ✅",
+      message: "Profile updated successfully ",
       photo_url: photoPath,
     });
   });

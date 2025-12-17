@@ -1,7 +1,7 @@
 const User = require("../models/userModel");
 const db = require("../db");
 
-// ✅ جلب بيانات المستخدم حسب الـ ID
+// جلب بيانات المستخدم حسب الـ ID
 exports.getProfileById = (req, res) => {
   const userId = req.params.id;
 
@@ -14,7 +14,7 @@ exports.getProfileById = (req, res) => {
 
   db.query(query, [userId], (err, results) => {
     if (err) {
-      console.error("❌ Database error:", err);
+      console.error(" Database error:", err);
       return res.status(500).json({ message: "Database error" });
     }
 
@@ -27,7 +27,7 @@ exports.getProfileById = (req, res) => {
 };
 
 
-// ✅ تحديث صورة المستخدم
+// تحديث صورة المستخدم
 exports.updatePhoto = (req, res) => {
   const email = req.body.email;
 

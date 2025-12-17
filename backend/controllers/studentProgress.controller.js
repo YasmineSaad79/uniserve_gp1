@@ -11,7 +11,7 @@ exports.getStudentProgress = async (req, res) => {
       SELECT 
         s.service_id,
         s.title,
-        COALESCE(s.progress_points, 0) AS hours,   -- 🔥 اسم أوضح
+        COALESCE(s.progress_points, 0) AS hours,   --  اسم أوضح
         vr.updated_at AS accepted_at
       FROM   uniserve.volunteer_requests vr
       JOIN   uniserve.users u ON u.id = vr.student_id
@@ -29,7 +29,7 @@ exports.getStudentProgress = async (req, res) => {
     const items = rows.map(r => ({
       service_id: r.service_id,
       title: r.title,
-      points: Number(r.hours) || 0,   // 🔥 الآن points = ساعات النشاط
+      points: Number(r.hours) || 0,   //  الآن points = ساعات النشاط
       accepted_at: r.accepted_at,
     }));
 
@@ -44,8 +44,8 @@ exports.getStudentProgress = async (req, res) => {
 
     return res.json({
       student_id: uniId,
-      total_hours: totalHours,      // 🔥 أضفت عدد الساعات الحقيقية
-      total_percent: totalPercent,  // 🔥 نسبة للـ UI
+      total_hours: totalHours,      // أضفت عدد الساعات الحقيقية
+      total_percent: totalPercent,  // نسبة للـ UI
       items,
     });
 

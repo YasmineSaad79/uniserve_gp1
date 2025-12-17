@@ -1,4 +1,4 @@
-// 📁 backend/controllers/studentProfileController.js
+//  backend/controllers/studentProfileController.js
 
 const db = require("../db");
 const path = require("path");
@@ -8,7 +8,7 @@ exports.getStudentProfile = async (req, res) => {
   const studentId = req.params.studentId;
 
   try {
-    // 🟣 أولاً: جلب بيانات الطالب
+    //  أولاً: جلب بيانات الطالب
     const [studentRows] = await db
       .promise()
       .query(
@@ -33,7 +33,7 @@ exports.getStudentProfile = async (req, res) => {
 
     const student = studentRows[0];
 
-    // 🟢 ثانيًا: نجيب الـ service_center_id المرتبط بأنشطة الطالب
+    //  ثانيًا: نجيب الـ service_center_id المرتبط بأنشطة الطالب
     const [centerRows] = await db
       .promise()
       .query(
@@ -53,17 +53,17 @@ exports.getStudentProfile = async (req, res) => {
     student.service_center_id =
       centerRows.length > 0 ? centerRows[0].service_center_id : 19; // 19 هو السنتر الرئيسي
 
-    console.log("✅ Student profile data sent:", student);
+    console.log(" Student profile data sent:", student);
     res.json(student);
   } catch (err) {
-    console.error("❌ Database error:", err);
+    console.error(" Database error:", err);
     res.status(500).json({ message: "Database error" });
   }
 };
 
 
 
-// ✅ تحديث بيانات الطالب
+//  تحديث بيانات الطالب
 exports.updateStudentProfile = (req, res) => {
   const studentId = req.params.studentId;
   const { full_name, email, phone_number, preferences, hobbies } = req.body;
@@ -86,7 +86,7 @@ exports.updateStudentProfile = (req, res) => {
 
   db.query(updateUserQuery, updateUserParams, (err1, results1) => {
     if (err1) {
-      console.error("❌ Error updating user:", err1);
+      console.error(" Error updating user:", err1);
       return res.status(500).json({ message: "Error updating user" });
     }
 
@@ -104,12 +104,12 @@ exports.updateStudentProfile = (req, res) => {
       [phone_number, preferences, hobbies, studentId],
       (err2, results2) => {
         if (err2) {
-          console.error("❌ Error updating student:", err2);
+          console.error(" Error updating student:", err2);
           return res.status(500).json({ message: "Error updating student profile" });
         }
 
         res.status(200).json({
-          message: "Profile updated successfully ✅",
+          message: "Profile updated successfully ",
           photo_url: photoUrl,
         });
       }
@@ -117,7 +117,7 @@ exports.updateStudentProfile = (req, res) => {
   });
 };
 
-// ✅ هذه هي الدالة الجديدة والمستقلة
+//  هذه هي الدالة الجديدة والمستقلة
 exports.getUserIdByStudentId = (req, res) => {
   const studentId = req.params.studentId;
 

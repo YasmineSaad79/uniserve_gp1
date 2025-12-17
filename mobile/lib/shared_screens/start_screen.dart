@@ -49,32 +49,41 @@ class _StartScreenState extends State<StartScreen>
 
   @override
   Widget build(BuildContext context) {
+    final bool isWeb = MediaQuery.of(context).size.width > 600;
+
+    Widget logoSection = ScaleTransition(
+      scale: _pulse,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            'assets/images/uniserve_logo.jpeg',
+            width: 230,
+            height: 230,
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'UNISERVE',
+            style: GoogleFonts.baloo2(
+              fontSize: 50,
+              fontWeight: FontWeight.w700,
+              color: Colors.purple,
+            ),
+          ),
+        ],
+      ),
+    );
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: ScaleTransition(
-          scale: _pulse,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/uniserve_logo.jpeg',
-                width: 230,
-                height: 230,
+      body: isWeb
+          ? Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: logoSection,
               ),
-              const SizedBox(height: 20),
-              Text(
-                'UNISERVE',
-                style: GoogleFonts.baloo2(
-                  fontSize: 50,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.purple,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            )
+          : Center(child: logoSection),
     );
   }
 }

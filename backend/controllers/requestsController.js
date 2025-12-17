@@ -41,7 +41,7 @@ exports.getVolunteerRequests = async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.log("❌ Error getVolunteerRequests:", err);
+    console.log(" Error getVolunteerRequests:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -102,10 +102,6 @@ exports.acceptVolunteerRequest = async (req, res) => {
   }
 };
 
-
-
-
-
 //
 // =====================
 //  Reject Request
@@ -155,7 +151,7 @@ exports.getCustomRequests = async (req, res) => {
     const [rows] = await db.promise().query(sql);
     res.json(rows);
   } catch (err) {
-    console.log("❌ Error getCustomRequests:", err);
+    console.log(" Error getCustomRequests:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -184,7 +180,7 @@ exports.getApprovedVolunteerRequests = async (req, res) => {
     const [rows] = await db.promise().query(sql);
     res.json(rows);
   } catch (err) {
-    console.log("❌ Error getApprovedVolunteerRequests:", err);
+    console.log(" Error getApprovedVolunteerRequests:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -213,7 +209,7 @@ exports.getApprovedCustomRequests = async (req, res) => {
     const [rows] = await db.promise().query(sql);
     res.json(rows);
   } catch (err) {
-    console.log("❌ Error getApprovedCustomRequests:", err);
+    console.log(" Error getApprovedCustomRequests:", err);
     res.status(500).json({ message: "Server error" });
   }
 
@@ -250,7 +246,7 @@ exports.updateCustomRequestStatus = async (req, res) => {
     res.json({ message: `Custom request ${status}` });
 
   } catch (err) {
-    console.log("❌ Error updateCustomRequestStatus:", err);
+    console.log(" Error updateCustomRequestStatus:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

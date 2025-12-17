@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import 'doctorStudentsScreenForDoctor.dart';
 import 'doctorMessagesScreen.dart';
 import 'ShowDoctorProfileScreen.dart';
+import 'DoctorHoursScreen.dart';
 
 class DoctorHome extends StatefulWidget {
   final int doctorId;
@@ -55,7 +56,7 @@ class _DoctorHomeScreenState extends State<DoctorHome> {
       setState(() {
         fullName = data["full_name"] ?? "Doctor";
         email = data["email"] ?? "Unknown";
-        serviceCenterId = data["service_center_id"]; // 👈 أضفنا هذا السطر
+        serviceCenterId = data["service_center_id"];
 
         final serverPhoto = data['photo_url'];
 
@@ -63,6 +64,7 @@ class _DoctorHomeScreenState extends State<DoctorHome> {
             ? "http://$serverIP:5000$serverPhoto?t=${DateTime.now().millisecondsSinceEpoch}"
             : null;
       });
+
       print("📌 Doctor Profile Loaded:");
       print("fullName = $fullName");
       print("email = $email");
@@ -162,7 +164,6 @@ class _DoctorHomeScreenState extends State<DoctorHome> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // LEFT
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -180,15 +181,11 @@ class _DoctorHomeScreenState extends State<DoctorHome> {
               ),
             ],
           ),
-
-          // RIGHT
           Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.calendar_today, color: Colors.white),
-                onPressed: () {
-                  // هنا لاحقًا ممكن نفتح صفحة تقويم للدكتور
-                },
+                onPressed: () {},
               ),
               GestureDetector(
                 onTap: () async {
@@ -201,10 +198,8 @@ class _DoctorHomeScreenState extends State<DoctorHome> {
                     ),
                   );
 
-                  // 👈 تحديث الصورة مباشرة
                   _fetchDoctorProfile();
-                }, // ← هون كان الخطأ: لازم تسكّري الـ onTap
-
+                },
                 child: CircleAvatar(
                   radius: 22,
                   backgroundImage: photoUrl != null
@@ -249,15 +244,19 @@ class _DoctorHomeScreenState extends State<DoctorHome> {
     );
   }
 
+  // ✅ GRIDVIEW بعد التعديل — تظهر 3 بطاقات بدون مشاكل
   Widget _buildFeatureGrid() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 15),
-      child: GridView.count(
-        crossAxisCount: 2,
+      child: GridView(
         shrinkWrap: true,
-        crossAxisSpacing: 15,
-        mainAxisSpacing: 15,
         physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 1.15,
+          crossAxisSpacing: 15,
+          mainAxisSpacing: 15,
+        ),
         children: [
           _buildFeatureButton(Icons.people_alt, "Students", () {
             Navigator.push(
@@ -269,7 +268,14 @@ class _DoctorHomeScreenState extends State<DoctorHome> {
               ),
             );
           }),
-          _buildFeatureButton(Icons.menu_book, "Manage Lessons", () {}),
+          _buildFeatureButton(Icons.access_time_filled, "Hours Summary", () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const DoctorHoursScreen(),
+              ),
+            );
+          }),
         ],
       ),
     );

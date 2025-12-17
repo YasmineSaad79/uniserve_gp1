@@ -1,3 +1,4 @@
+//  routes/doctorRoutes.js
 const express = require("express");
 const router = express.Router();
 const path = require("path");
@@ -24,7 +25,10 @@ const upload = multer({ storage });
 //  ROUTES
 // ======================
 
-// Get profile
+// ------------------------------------------------------
+//  جلب بروفايل دكتور
+//  Permission: canViewProfile
+// ------------------------------------------------------
 router.get(
   "/profile/:doctorId",
   verifyToken,
@@ -32,7 +36,10 @@ router.get(
   doctorController.getDoctorProfile
 );
 
-// Update profile (name + phone + optional photo SAME endpoint)
+// ------------------------------------------------------
+//  تحديث بروفايل دكتور (اسم + هاتف + صورة)
+//  Permission: canEditProfile
+// ------------------------------------------------------
 router.put(
   "/profile/:doctorId",
   verifyToken,
@@ -41,7 +48,10 @@ router.put(
   doctorController.updateDoctorProfile
 );
 
-// Change password
+// ------------------------------------------------------
+//  تغيير كلمة المرور
+//  Permission: canEditProfile
+// ------------------------------------------------------
 router.put(
   "/profile/password/:doctorId",
   verifyToken,
@@ -49,7 +59,10 @@ router.put(
   doctorController.changePassword
 );
 
-// Students under a doctor
+// ------------------------------------------------------
+//  جلب طلاب الدكتور
+//  Permission: canViewStudents
+// ------------------------------------------------------
 router.get(
   "/my-students",
   verifyToken,

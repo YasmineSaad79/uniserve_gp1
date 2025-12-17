@@ -1,20 +1,19 @@
 // ============================
-// 📁 backend/routes/userRoutes.js
+//  backend/routes/userRoutes.js
 // ============================
 
 const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
-const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const db = require("../db");
-const verifyToken = require("../middleware/verifyToken");   // ✅ هذا السطر لازم
+
+const verifyToken = require("../middleware/verifyToken");
 const authorizePermission = require("../middleware/authorizePermission");
 
-
 // ============================
-// ✉️ إعداد الـ SMTP
+//  إعداد الـ SMTP
 // ============================
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -27,18 +26,17 @@ const transporter = nodemailer.createTransport({
 });
 
 // ============================
-// 🟢 تسجيل مستخدم جديد (Sign Up)
+//  تسجيل مستخدم جديد (Public)
 // ============================
 router.post("/signup", userController.registerUser);
-router.get("/", userController.getAllUsers);
 
 // ============================
-// 🟣 تسجيل الدخول (Sign In)
+//  تسجيل الدخول (Public)
 // ============================
 router.post("/signIn", userController.loginUser);
 
 // ============================
-// 🔐 نسيان كلمة المرور (Forgot Password)
+//  نسيان كلمة المرور (Public)
 // ============================
 router.post("/forgot-password", (req, res) => {
   const { email } = req.body;
@@ -55,9 +53,7 @@ router.post("/forgot-password", (req, res) => {
       return res.status(500).json({ message: "Database error" });
     }
     if (result.affectedRows === 0)
-      return res
-        .status(404)
-        .json({ message: "User with this email not found" });
+      return res.status(404).json({ message: "User not found" });
 
     const mailOptions = {
       from: process.env.FROM_EMAIL || `"UniServe" <${process.env.SMTP_USER}>`,
@@ -65,47 +61,81 @@ router.post("/forgot-password", (req, res) => {
       subject: "UniServe Password Reset Code",
       html: `
         <h3>UniServe Password Reset</h3>
-        <p>Your password reset code is:</p>
-        <h2 style="letter-spacing:3px;">${token}</h2>
-        <p>This code is valid for <b>15 minutes</b>.</p>
+        <h2>${token}</h2>
+        <p>Valid for 15 minutes</p>
       `,
     };
 
-    transporter.sendMail(mailOptions, (mailErr, info) => {
-      if (mailErr) {
-        console.error("Mail error:", mailErr);
-        return res.status(500).json({ message: "Failed to send email" });
-      }
-      console.log("✅ Reset code sent:", info.response);
-      return res
-        .status(200)
-        .json({ message: "Verification code sent to your email ✅" });
-    });
+    transporter.sendMail(mailOptions, () =>
+      res.json({ message: "Verification code sent " })
+    );
   });
 });
 
 // ============================
-// 🔁 إعادة تعيين كلمة المرور (Reset Password)
+//  إعادة تعيين كلمة المرور (Public)
 // ============================
 router.post("/reset-password", userController.resetPassword);
 
-// GET بيانات المستخدم حسب الـ email أو الـ id
-router.get("/profile/:id", (req, res) => {
-  const { id } = req.params;
-  const sql = "SELECT full_name, email, photo_url FROM users WHERE id = ?";
-  db.query(sql, [id], (err, results) => {
-    if (err) return res.status(500).json({ message: "Database error" });
-    if (results.length === 0)
-      return res.status(404).json({ message: "User not found" });
+// ============================
+//  جلب كل المستخدمين
+//  Permission: canViewStudents
+// ============================
+router.get(
+  "/",
+  verifyToken,
+  authorizePermission("canViewStudents"),
+  userController.getAllUsers
+);
 
-    const user = results[0];
-    return res.json({
-      fullName: user.full_name,
-      email: user.email,
-      photo_url: user.photo_url 
+// ============================
+//  جلب بروفايل مستخدم
+//  Permission: canViewProfile
+// ============================
+router.get(
+  "/profile/:id",
+  verifyToken,
+  authorizePermission("canViewProfile"),
+  async (req, res) => {
+    const { id } = req.params;
+    const sql = "SELECT full_name, email, photo_url FROM users WHERE id = ?";
+    db.query(sql, [id], (err, results) => {
+      if (err) return res.status(500).json({ message: "Database error" });
+      if (results.length === 0)
+        return res.status(404).json({ message: "User not found" });
+
+      res.json(results[0]);
     });
-  });
-});
+  }
+);
 
+// ============================
+//  Get user_id by student_id
+//  Permission: canViewProfile
+// ============================
+router.get(
+  "/get-userid-by-uni/:studentId",
+  verifyToken,
+  authorizePermission("canViewProfile"),
+  async (req, res) => {
+    const { studentId } = req.params;
+
+    const [rows] = await db
+      .promise()
+      .query("SELECT id FROM users WHERE student_id = ?", [studentId]);
+
+    if (rows.length === 0)
+      return res.status(404).json({ message: "Student not found" });
+
+    res.json({ user_id: rows[0].id });
+  }
+);
+
+// ============================
+//  Debug
+// ============================
+router.get("/debug/me", verifyToken, (req, res) => {
+  res.json({ user: req.user });
+});
 
 module.exports = router;

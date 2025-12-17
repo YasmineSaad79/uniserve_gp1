@@ -11,7 +11,7 @@ class AssignStudentScreen extends StatefulWidget {
 }
 
 class _AssignStudentScreenState extends State<AssignStudentScreen> {
-  final TextEditingController studentController = TextEditingController();
+  final TextEditingController controller = TextEditingController();
   bool loading = false;
 
   @override
@@ -22,32 +22,42 @@ class _AssignStudentScreenState extends State<AssignStudentScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("ربط طالب مع $doctorName"),
-        backgroundColor: Colors.teal,
+        title: Text("Assign to $doctorName"),
+        backgroundColor: Colors.deepPurple,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         child: Column(
           children: [
-            const Text("أدخل رقم الطالب:"),
-            const SizedBox(height: 10),
+            const Text(
+              "Enter student university ID:",
+              style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.deepPurple,
+                  fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 15),
             TextField(
-              controller: studentController,
+              controller: controller,
+              keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "مثال: 12112347",
+                hintText: "12112345",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
             const SizedBox(height: 25),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: Colors.deepPurple,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              onPressed: loading ? null : () => _assignStudent(doctorId),
+              onPressed: loading ? null : () => _assign(doctorId),
               child: loading
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text("إتمام الربط"),
+                  : const Text("Assign",
+                      style: TextStyle(fontSize: 18, color: Colors.white)),
             )
           ],
         ),
@@ -55,37 +65,17 @@ class _AssignStudentScreenState extends State<AssignStudentScreen> {
     );
   }
 
-  void showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  Future<void> _assignStudent(int doctorId) async {
-    final studentUniId = studentController.text.trim();
-
-    if (studentUniId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("❌ الرجاء إدخال رقم الطالب الجامعي"),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+  Future<void> _assign(int doctorId) async {
+    final uniId = controller.text.trim();
+    if (uniId.isEmpty) return _msg("Enter student ID");
 
     setState(() => loading = true);
 
     try {
-      // 🔍 1) جلب user_id الحقيقي بناءً على student_id
-      final studentUserId = await ApiService.getUserIdFromUniId(studentUniId);
+      final userId = await ApiService.getUserIdFromUniId(uniId);
 
-      if (studentUserId == null) {
-        showSnack("رقم الطالب غير موجود");
-        return;
+      if (userId == null) {
+        return _msg("Student not found");
       }
 
       final res = await http.post(
@@ -95,38 +85,32 @@ class _AssignStudentScreenState extends State<AssignStudentScreen> {
           "Content-Type": "application/json"
         },
         body: jsonEncode({
+          "studentId": userId,
           "doctorId": doctorId,
-          "studentId": studentUserId,
         }),
       );
 
       final data = jsonDecode(res.body);
 
       if (res.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("✔ تم ربط الطالب مع الدكتور بنجاح"),
-            backgroundColor: Colors.green,
-          ),
-        );
-        studentController.clear();
+        controller.clear();
+        _msg("Student assigned successfully", ok: true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data["message"] ?? "❌ فشل في العملية"),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _msg(data["message"] ?? "Error");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("❌ خطأ في الاتصال: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _msg("Connection error: $e");
     }
 
     setState(() => loading = false);
+  }
+
+  void _msg(String text, {bool ok = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        backgroundColor: ok ? Colors.green : Colors.red,
+      ),
+    );
   }
 }

@@ -1,31 +1,31 @@
+// ============================
+// 📁 backend/models/userModel.js
+// ============================
+
 const db = require("../db");
 
-const Users = {
-  create: (fullName, email, password, role, callback) => {
-    const sql = `
-      INSERT INTO users (full_name, email, password, role)
-      VALUES (?, ?, ?, ?)
+const User = {
+  // ✅ إنشاء مستخدم جديد
+  // يمكن إرسال photo_url أو تركه فارغ (null)
+  create: (full_name, student_id, email, password, role, photo_url = null, callback) => {
+    const query = `
+      INSERT INTO users (full_name, student_id, email, password, role, photo_url, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, NOW())
     `;
-    db.query(sql, [fullName, email, password, role], callback);
+    db.query(query, [full_name, student_id, email, password, role, photo_url], callback);
   },
 
-  getByEmail: (email, callback) => {
-    db.query(`SELECT * FROM users WHERE email = ?`, [email], callback);
+  // ✅ البحث عن مستخدم حسب الإيميل
+  findByEmail: (email, callback) => {
+    const query = "SELECT * FROM users WHERE email = ?";
+    db.query(query, [email], callback);
   },
 
-  getById: (id, callback) => {
-    db.query(`SELECT * FROM users WHERE id = ?`, [id], callback);
+  // ✅ تحديث رابط الصورة للمستخدم
+  updatePhoto: (email, photo_url, callback) => {
+    const query = "UPDATE users SET photo_url = ? WHERE email = ?";
+    db.query(query, [photo_url, email], callback);
   },
-
-  updatePhoto: (id, photoUrl, callback) => {
-    db.query(`UPDATE users SET photo_url = ? WHERE id = ?`,
-      [photoUrl, id], callback);
-  },
-
-  updateFCMToken: (id, token, callback) => {
-    db.query(`UPDATE users SET fcm_token = ? WHERE id = ?`,
-      [token, id], callback);
-  }
 };
 
-module.exports = Users;
+module.exports = User;

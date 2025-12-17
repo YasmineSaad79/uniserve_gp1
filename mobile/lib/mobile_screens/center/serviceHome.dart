@@ -15,7 +15,8 @@ import 'studentQuestionsScreen.dart';
 import 'requests_page.dart';
 import 'approvals_page.dart';
 import 'center_submissions_screen.dart';
-import '../signin_screen.dart';
+import '../../shared_screens/signin_screen.dart';
+import 'calendar_activities.dart';
 
 class ServiceHomeScreen extends StatefulWidget {
   const ServiceHomeScreen({super.key});
@@ -752,8 +753,14 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
                   Row(
                     children: [
                       IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.email_outlined,
+                        onPressed: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const CalendarActivitiesScreen()));
+                        },
+                        icon: const Icon(Icons.calendar_month,
                             color: Colors.white),
                       ),
                       _ServiceBell(

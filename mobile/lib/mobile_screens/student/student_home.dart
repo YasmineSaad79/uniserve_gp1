@@ -17,7 +17,7 @@ import '../center/viewActivitiesScreen.dart';
 import 'myProgressScreen.dart';
 import 'student_calendar_screen.dart';
 import 'studentSubmissionScreen.dart';
-import '../signin_screen.dart'; // 👈 عدّليها لمسار شاشة اللوجن عندك
+import '../../shared_screens/signin_screen.dart'; // 👈 عدّليها لمسار شاشة اللوجن عندك
 
 class StudentHome extends StatefulWidget {
   final String studentId;
@@ -713,13 +713,9 @@ class _StudentHomeState extends State<StudentHome>
 
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.purple),
-                      tooltip: "Clear search",
+                      tooltip: "Close",
                       onPressed: () {
-                        _searchController.clear(); // 🧹 يمسح النص من مربع البحث
-                        setStateSheet(() {
-                          _searchResults.clear(); // 🧹 يمسح النتائج من القائمة
-                          _isSearching = false;
-                        });
+                        Navigator.pop(context); // ← يغلق نافذة السيرتش بالكامل
                       },
                     ),
                   ],
@@ -921,7 +917,9 @@ class _StudentHomeState extends State<StudentHome>
                   "Status: $status",
                   style: TextStyle(
                     fontSize: 13,
-                    color: status == "submitted" ? Colors.green : Colors.orange,
+                    color: status == "submitted"
+                        ? const Color.fromARGB(255, 1, 2, 1)
+                        : Colors.green,
                   ),
                 ),
               ],
@@ -1409,72 +1407,71 @@ class _StudentHomeState extends State<StudentHome>
 
             // شريط بحث نيوومورفيك
             // 🔍 شريط بحث نيوومورفيك (يفتح نافذة البحث)
-            Center(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // مستطيل search
-                  SizedBox(
-                    width: 220,
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFFFFFFF),
-                            Color(0xFFFFFFFF),
-                          ],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 12,
-                            offset: Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text(
-                          "search",
-                          style: TextStyle(
-                            color: Colors.purple,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
 
-                  // الدائرة فوق بداية الكبسة
-                  Positioned(
-                    left: 1,
-                    top: 1,
-                    child: Container(
-                      width: 45,
-                      height: 45,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.purple.withOpacity(0.9),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
+            Center(
+              child: GestureDetector(
+                onTap: _openSearchSheet, // ← هي أهم خطوة
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // مستطيل search
+                    SizedBox(
+                      width: 220,
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.search,
-                        color: Colors.white,
-                        size: 22,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 12,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            "search",
+                            style: TextStyle(
+                              color: Colors.purple,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+
+                    // الدائرة فوق
+                    Positioned(
+                      left: 1,
+                      top: 1,
+                      child: Container(
+                        width: 45,
+                        height: 45,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.purple.withOpacity(0.9),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.search,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -1715,61 +1712,168 @@ class _StudentHomeState extends State<StudentHome>
   Widget _buildPreviewActivities() {
     final items = _recentActivities.take(3).toList();
 
-    return Column(
-      children: items.map((item) {
-        final title = item["activity_title"] ?? "Activity";
-        final status = item["status"] ?? "pending";
+    // إذا القائمة فاضية
+    if (items.isEmpty) {
+      return const Text(
+        "No recent activities yet.",
+        style: TextStyle(color: Colors.grey),
+      );
+    }
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // أيقونة صغيرة
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(10),
+    // -------------------------
+    // ⭐ وضع Expanded
+    // -------------------------
+    if (_expanded) {
+      return Column(
+        children: items.map((item) {
+          final title = item["activity_title"] ?? "Activity";
+          final status = item["status"] ?? "pending";
+
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ViewActivitiesScreen(isStudent: true),
                 ),
-                child:
-                    const Icon(Icons.event, size: 18, color: Colors.deepPurple),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-
-              const SizedBox(width: 12),
-
-              // نص العنوان والحالة
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF4A148C),
-                      ),
+              child: Row(
+                children: [
+                  const Icon(Icons.event, color: Colors.deepPurple, size: 32),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF6A1B9A),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Status: $status",
+                          style: TextStyle(
+                            color: ["approved", "submitted"].contains(status)
+                                ? Colors.green
+                                : Colors.orange,
+                          ),
+                        )
+                      ],
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      "Status: $status",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            status == "approved" ? Colors.green : Colors.orange,
-                      ),
-                    )
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      }).toList(),
+            ),
+          );
+        }).toList(),
+      );
+    }
+    print("🔥 recent count = ${items.length}");
+
+
+// -------------------------
+    return SizedBox(
+      height: 80,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: List.generate(items.length, (index) {
+          final item = items[index];
+          final title = item["activity_title"] ?? "Activity";
+          final status = item["status"] ?? "pending";
+
+          bool isMain = index == 0;
+
+          // ⭐ Premium Offsets (نفس أسلوب Google Tasks)
+          double topOffset = index * 20; // يزحف لتحت ناعم
+          double leftOffset = index * 0; // يزحف يمين ناعم
+
+          // ⭐ اختلاف عرض الكروت (layer effect)
+          // ارتفاع الكروت
+          double cardHeight = isMain ? 55 : (index == 1 ? 44 : 36);
+
+// عرض الكروت
+          double cardWidth = MediaQuery.of(context).size.width *
+              (isMain ? 0.82 : (index == 1 ? 0.76 : 0.72));
+
+          // ⭐ شفافية الكروت الخلفية (فقط تلميح)
+          double opacity = isMain ? 1.0 : (0.20 + index * 0.13);
+
+          return Positioned(
+            top: topOffset,
+            left: leftOffset,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              width: cardWidth,
+              height: cardHeight,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(opacity),
+                borderRadius: BorderRadius.circular(isMain ? 20 : 16),
+
+                // ⭐ Premium Shadow (لكل طبقة شكل مختلف)
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isMain ? 0.15 : 0.21),
+                    blurRadius: isMain ? 10 : 6,
+                    offset: Offset(0, isMain ? 4 : 2),
+                  ),
+                ],
+              ),
+
+              // ⭐ محتوى الكرت الأساسي فقط
+              child: isMain
+                  ? Row(
+                      children: [
+                        const Icon(Icons.event,
+                            color: Colors.deepPurple, size: 26),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF6A1B9A),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          status,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: ["approved", "submitted"].contains(status)
+                                ? Colors.green
+                                : Colors.orange,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          );
+        }).reversed.toList(),
+      ),
     );
   }
 
@@ -1788,47 +1892,57 @@ class _StudentHomeState extends State<StudentHome>
         final name = item["service_title"] ?? item["title"] ?? "Service";
         final desc = item["description"] ?? "";
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 6,
-                offset: const Offset(0, 4),
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ViewActivitiesScreen(isStudent: true),
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.recommend, color: Colors.deepPurple, size: 32),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF7B1FA2),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      desc,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ],
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 4),
                 ),
-              )
-            ],
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.recommend, color: Colors.deepPurple, size: 32),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF7B1FA2),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        desc,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
+              ],
+            ),
           ),
         );
       }).toList(),

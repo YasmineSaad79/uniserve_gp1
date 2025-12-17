@@ -1,4 +1,4 @@
-// 📁 routes/activityRoutes.js
+//  routes/activityRoutes.js
 const express = require('express');
 const router = express.Router();
 
@@ -7,14 +7,15 @@ const upload = require('../middleware/upload');
 const verifyToken = require('../middleware/verifyToken');
 const authorizePermission = require('../middleware/authorizePermission');
 
-// 🧾 لوج لأي طلب يتم على الراوت
+//  لوج لأي طلب يتم على الراوت
 const logRequest = (req, res, next) => {
-  console.log(`🟢 [${req.method}] Request to /api/activities${req.path}`);
+  console.log(` [${req.method}] Request to /api/activities${req.path}`);
   next();
 };
 
 // ======================================================
-// 🟣 إضافة نشاط جديد (صلاحية: canAddActivity)
+//  إضافة نشاط جديد
+//  Permission: canAddActivity
 // ======================================================
 router.post(
   '/',
@@ -29,14 +30,15 @@ router.post(
     try {
       activityController.addActivity(req, res);
     } catch (err) {
-      console.error("❌ Upload or Controller Error:", err);
+      console.error(" Upload or Controller Error:", err);
       res.status(400).json({ success: false, message: err.message });
     }
   }
 );
 
 // ======================================================
-// 🔵 جلب كل الأنشطة (صلاحية: canViewActivities)
+//  جلب جميع الأنشطة
+//  Permission: canViewActivities
 // ======================================================
 router.get(
   '/',
@@ -47,7 +49,8 @@ router.get(
 );
 
 // ======================================================
-// 🔵 جلب نشاط واحد بالـ ID (صلاحية: canViewActivities)
+//  جلب نشاط واحد حسب ID
+//  Permission: canViewActivities
 // ======================================================
 router.get(
   '/:id',
@@ -58,10 +61,8 @@ router.get(
 );
 
 // ======================================================
-// 🟠 تحديث نشاط (صلاحية: canManageActivities)
-// ======================================================
-// ======================================================
-// 🟠 تحديث نشاط (صلاحية: canManageActivities)
+//  تحديث نشاط
+//  Permission: canManageActivities
 // ======================================================
 router.put(
   '/:id',
@@ -76,15 +77,15 @@ router.put(
     try {
       activityController.updateActivity(req, res);
     } catch (err) {
-      console.error("❌ Update error:", err);
+      console.error(" Update error:", err);
       res.status(400).json({ success: false, message: err.message });
     }
   }
 );
 
-
 // ======================================================
-// 🔴 حذف نشاط (صلاحية: canDeleteActivity)
+//  حذف نشاط
+//  Permission: canDeleteActivity
 // ======================================================
 router.delete(
   '/:id',

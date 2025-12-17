@@ -1,12 +1,3 @@
-// controllers/calendar.controller.js
-// ============================================================
-// Calendar endpoints (accepted activities only)
-// - getCalendarByMonth : /api/calendar/month/:studentUniId?year=YYYY&month=MM
-// - getCalendarAll     : /api/calendar/all/:studentUniId
-//
-// ملاحظة مهمة:
-// لا نستخدم new Date(...).toISOString() أبداً على قيم MySQL Date
-// لأنه يعمل تحويل لمنطقة زمنية ويطرح/يزيد يوم. نرجّع التاريخ كنص جاهز.
 // ============================================================
 
 const db = require('../db');

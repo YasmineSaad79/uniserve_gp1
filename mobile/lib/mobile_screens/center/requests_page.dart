@@ -401,7 +401,10 @@ class _RequestsPageState extends State<RequestsPage> {
                               child: ElevatedButton(
                                 onPressed: () {
                                   _updateRequestStatus(
-                                      req["request_id"], "approved");
+                                    req["request_id"],
+                                    "approved",
+                                    isVolunteer, // هون مكانها الصحيح
+                                  );
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green,
@@ -427,7 +430,10 @@ class _RequestsPageState extends State<RequestsPage> {
                               child: ElevatedButton(
                                 onPressed: () {
                                   _updateRequestStatus(
-                                      req["request_id"], "rejected");
+                                    req["request_id"],
+                                    "rejected",
+                                    isVolunteer,
+                                  );
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.grey,
@@ -487,14 +493,28 @@ class _RequestsPageState extends State<RequestsPage> {
     );
   }
 
-  Future<void> _updateRequestStatus(int id, String newStatus) async {
+  Future<void> _updateRequestStatus(
+      int id, String newStatus, bool isVolunteer) async {
     try {
-      await ApiService.updateCenterCustomRequestStatus(
-        requestId: id,
-        status: newStatus,
-      );
+      if (isVolunteer) {
+        if (newStatus == "approved") {
+          await ApiService.acceptVolunteerRequest(id);
+        } else {
+          await ApiService.rejectVolunteerRequest(id);
+        }
+      } else {
+        // معالجة طلب Custom
+        await ApiService.updateCenterCustomRequestStatus(
+          requestId: id,
+          status: newStatus,
+        );
+      }
 
+      // حمّلي الطلبات الجديدة
       await loadRequests();
+
+      // جدّدي الواجهة
+      setState(() {});
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Request $newStatus")),

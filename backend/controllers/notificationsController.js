@@ -25,7 +25,7 @@ function parseJsonSafe(raw) {
 
 /** Send push notification to all devices for a given user_id */
 async function sendPushToUser(userId, title, body, data = {}) {
-  console.log("🚀 sendPushToUser called for user:", userId, "title:", title);
+  console.log(" sendPushToUser called for user:", userId, "title:", title);
 
   return new Promise((resolve, reject) => {
     const sql = `SELECT token FROM uniserve.device_tokens WHERE user_id = ?`;
@@ -42,7 +42,7 @@ async function sendPushToUser(userId, title, body, data = {}) {
         dataStrings[String(k)] = String(v);
       }
 
-      // 🟣 هنا التعديل المهم
+      //  هنا التعديل المهم
       const message = {
   tokens,
   notification: { title, body }, // للمود الخلفي فقط
@@ -57,10 +57,10 @@ async function sendPushToUser(userId, title, body, data = {}) {
 
       try {
         const res = await admin.messaging().sendEachForMulticast(message);
-        console.log("📬 Push result:", res.successCount, "sent,", res.failureCount, "failed");
+        console.log("Push result:", res.successCount, "sent,", res.failureCount, "failed");
         resolve({ sent: res.successCount, failed: res.failureCount });
       } catch (e) {
-        console.error("❌ FCM send error:", e);
+        console.error(" FCM send error:", e);
         reject(e);
       }
     });
@@ -102,15 +102,15 @@ function getUserBasic(userId) {
 
 /** 1) Register/Update device token */
 exports.registerDeviceToken = (req, res) => {
-  console.log("🚀 ENTERED registerDeviceToken()");
-  console.log("📩 BODY:", req.body);
-  console.log("👤 USER:", req.user);
+  console.log(" ENTERED registerDeviceToken()");
+  console.log(" BODY:", req.body);
+  console.log(" USER:", req.user);
 
   const { token, platform = "android" } = req.body;
   const userId = req.user?.id;
 
   if (!userId) {
-    console.warn("⚠️ No user attached to token registration");
+    console.warn(" No user attached to token registration");
     return res.status(401).json({ message: "User not authenticated" });
   }
 
@@ -124,11 +124,11 @@ exports.registerDeviceToken = (req, res) => {
 
   db.query(sql, [userId, token, platform], (err) => {
     if (err) {
-      console.error("❌ Error saving FCM token:", err);
+      console.error(" Error saving FCM token:", err);
       return res.status(500).json({ message: "DB error", error: err.message });
     }
-    console.log(`✅ Device token saved for user_id = ${userId}`);
-    res.json({ message: "Token registered ✅", user_id: userId });
+    console.log(` Device token saved for user_id = ${userId}`);
+    res.json({ message: "Token registered ", user_id: userId });
   });
 };
 
@@ -182,11 +182,11 @@ exports.createVolunteerRequest = async (req, res) => {
     });
 
     res.status(201).json({
-      message: "Request sent ✅",
+      message: "Request sent ",
       notification_id: notifId,
     });
   } catch (e) {
-    console.error("❌ createVolunteerRequest error:", e);
+    console.error(" createVolunteerRequest error:", e);
     res.status(500).json({ message: "Server error", error: e.message });
   }
 };
@@ -262,11 +262,12 @@ exports.markAsRead = (req, res) => {
       return res.status(500).json({ message: "DB error", error: err.message });
     if (!result.affectedRows)
       return res.status(404).json({ message: "Not found" });
-    res.json({ message: "Marked as read ✅" });
+    res.json({ message: "Marked as read " });
   });
 };
 
 /** 6) Service center acts on volunteer_request notification */
+/*
 exports.actOnNotification = async (req, res) => {
   try {
     const serviceUserId = req.user.id;
@@ -375,9 +376,9 @@ exports.actOnNotification = async (req, res) => {
       activity_id,
     });
 
-    res.json({ message: `Request ${newStatus} ✅` });
+    res.json({ message: `Request ${newStatus} ` });
   } catch (e) {
-    console.error("❌ actOnNotification error:", e);
+    console.error(" actOnNotification error:", e);
     res.status(500).json({ message: "Server error", error: e.message });
   }
 };
@@ -390,4 +391,164 @@ module.exports = {
   markAsRead: exports.markAsRead,
   actOnNotification: exports.actOnNotification,
   sendPushToUser,
+};
+*/
+exports.actOnNotification = async (req, res) => {
+  try {
+    const serviceUserId = req.user.id;
+    const { id } = req.params;
+    const { action } = req.body;
+
+    if (!["accept", "reject"].includes(action)) {
+      return res.status(400).json({
+        message: "action must be accept or reject",
+      });
+    }
+
+    // ===============================
+    // 1 جلب الإشعار
+    // ===============================
+    const notif = await new Promise((resolve, reject) => {
+      db.query(
+        `SELECT * FROM uniserve.notifications 
+         WHERE id = ? AND receiver_id = ? 
+         LIMIT 1`,
+        [id, serviceUserId],
+        (err, rows) => (err ? reject(err) : resolve(rows?.[0] || null))
+      );
+    });
+
+    if (!notif) {
+      return res.status(404).json({
+        message: "Notification not found",
+      });
+    }
+
+    const payload = parseJsonSafe(notif.payload);
+
+    // ===============================
+    // 2 تحديد النوع
+    // ===============================
+    const isVolunteer = notif.type === "volunteer_request";
+    const isProposal = notif.type === "service_proposal";
+
+    if (!isVolunteer && !isProposal) {
+      return res.status(400).json({
+        message: "Notification type is not actionable",
+      });
+    }
+
+    // ===============================
+    // 3 تنفيذ الإجراء
+    // ===============================
+    let studentId;
+    let activityId = null;
+    let customRequestId = null;
+
+    if (isVolunteer) {
+      activityId = notif.activity_id || payload.activity_id;
+      studentId = payload.student_id || notif.sender_user_id;
+
+      if (!activityId || !studentId) {
+        return res.status(400).json({
+          message: "Missing activity_id or student_id",
+        });
+      }
+
+      const newStatus = action === "accept" ? "accepted" : "rejected";
+
+      await db.promise().query(
+        `UPDATE uniserve.volunteer_requests
+         SET status = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE activity_id = ? AND student_id = ?`,
+        [newStatus, activityId, studentId]
+      );
+    }
+
+    if (isProposal) {
+      customRequestId = payload.custom_request_id;
+      studentId = payload.student_user_id || notif.sender_user_id;
+
+      if (!customRequestId || !studentId) {
+        return res.status(400).json({
+          message: "Missing custom_request_id or student_user_id",
+        });
+      }
+
+      const newStatus = action === "accept" ? "approved" : "rejected";
+
+      await db.promise().query(
+        `UPDATE uniserve.student_custom_requests
+         SET status = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [newStatus, customRequestId]
+      );
+    }
+
+    // ===============================
+    // 4 تحديث الإشعار الأصلي
+    // ===============================
+    await db.promise().query(
+      `UPDATE uniserve.notifications
+       SET status = 'acted',
+           action = ?,
+           acted_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [action, id]
+    );
+
+    // ===============================
+    // 5 إنشاء إشعار جديد للطالب
+    // ===============================
+    const title =
+      action === "accept"
+        ? isVolunteer
+          ? "Volunteer Request Accepted"
+          : "Service Proposal Accepted"
+        : isVolunteer
+        ? "Volunteer Request Rejected"
+        : "Service Proposal Rejected";
+
+    const body =
+      action === "accept"
+        ? "Your request has been accepted "
+        : "Your request has been rejected ";
+
+    const backPayload = JSON.stringify({
+      activity_id: activityId,
+      custom_request_id: customRequestId,
+      decision_by: serviceUserId,
+    });
+
+    const [result] = await db.promise().query(
+      `INSERT INTO uniserve.notifications
+       (type, sender_user_id, receiver_id, activity_id, title, body, payload, status, is_read)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'unread', 0)`,
+      [
+        action === "accept" ? "request_accepted" : "request_rejected",
+        serviceUserId,
+        studentId,
+        activityId,
+        title,
+        body,
+        backPayload,
+      ]
+    );
+
+    await sendPushToUser(studentId, title, body, {
+      notification_id: result.insertId,
+    });
+
+    res.json({
+      message: "Action completed successfully ",
+      type: notif.type,
+      action,
+    });
+  } catch (e) {
+    console.error(" actOnNotification error:", e);
+    res.status(500).json({
+      message: "Server error",
+      error: e.message,
+    });
+  }
 };

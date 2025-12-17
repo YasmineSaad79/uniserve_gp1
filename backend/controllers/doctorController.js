@@ -2,7 +2,7 @@ const db = require("../db");
 const bcrypt = require("bcrypt");
 
 // =====================================================
-// 🟢 Get doctor profile
+//  Get doctor profile
 // =====================================================
 exports.getDoctorProfile = (req, res) => {
   const doctorId = req.params.doctorId;
@@ -31,7 +31,7 @@ exports.getDoctorProfile = (req, res) => {
 };
 
 // =====================================================
-// 🟣 Update doctor profile (name + phone + optional photo)
+//  Update doctor profile (name + phone + optional photo)
 //     SAME endpoint for saving text + photo
 // =====================================================
 exports.updateDoctorProfile = (req, res) => {
@@ -41,14 +41,14 @@ exports.updateDoctorProfile = (req, res) => {
   const full_name = req.body.full_name || "";
   const phone_number = req.body.phone_number || "";
 
-  // ❌ ممنوع تغيير الإيميل
+  //  ممنوع تغيير الإيميل
   // الـ Flutter لازم يبعت الإيميل بس ما نستخدمه
   const ignoreEmail = req.body.email;
 
-  // 📸 إذا فيه صورة:
+  //  إذا فيه صورة:
   const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-  // 1️⃣ تحديث users (الاسم + الصورة إن وجدت)
+  //  تحديث users (الاسم + الصورة إن وجدت)
   const sqlUser = photoUrl
     ? `UPDATE users SET full_name = ?, photo_url = ? WHERE id = ?`
     : `UPDATE users SET full_name = ? WHERE id = ?`;
@@ -63,7 +63,7 @@ exports.updateDoctorProfile = (req, res) => {
       return res.status(500).json({ message: "Error updating user data" });
     }
 
-    // 2️⃣ تحديث doctors (phone)
+    //  تحديث doctors (phone)
     const sqlDoc = `UPDATE doctors SET phone_number = ? WHERE user_id = ?`;
 
     db.query(sqlDoc, [phone_number, doctorId], (err2) => {
@@ -75,7 +75,7 @@ exports.updateDoctorProfile = (req, res) => {
       }
 
       return res.json({
-        message: "Profile updated successfully 🎉",
+        message: "Profile updated successfully ",
         photo_url: photoUrl || undefined,
       });
     });
@@ -83,7 +83,7 @@ exports.updateDoctorProfile = (req, res) => {
 };
 
 // =====================================================
-// 🟡 Change password
+//  Change password
 // =====================================================
 exports.changePassword = async (req, res) => {
   const doctorId = req.params.doctorId;
@@ -111,7 +111,7 @@ exports.changePassword = async (req, res) => {
 };
 
 // =====================================================
-// 🟢 Students assigned to a doctor
+//  Students assigned to a doctor
 // =====================================================
 exports.getDoctorStudentsForDoctor = async (req, res) => {
   try {

@@ -148,7 +148,7 @@ exports.analyzeCustomRequestSimilarity = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ AI similarity error:", err);
+    console.error(" AI similarity error:", err);
     return res.status(500).json({ message: "AI similarity error occurred" });
   }
 };

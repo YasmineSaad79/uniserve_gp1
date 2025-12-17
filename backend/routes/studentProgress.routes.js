@@ -1,20 +1,26 @@
-// routes/studentProgress.routes.js
+//  routes/studentProgress.routes.js
 'use strict';
 
 const express = require('express');
 const router = express.Router();
 
 const verifyToken = require('../middleware/verifyToken');
+const authorizePermission = require('../middleware/authorizePermission');
 const studentProgressController = require('../controllers/studentProgress.controller');
 
-// ✅ نحمي جميع المسارات الخاصة بالطلاب
+// ======================================================
+//  حماية جميع مسارات تقدّم الطالب
+// ======================================================
 router.use(verifyToken);
 
-/**
- * @route   GET /api/student/progress/:studentUniId
- * @desc    Get student's overall progress and accepted activities
- * @access  Private (Student)
- */
-router.get('/:studentUniId', studentProgressController.getStudentProgress);
+// ======================================================
+//  جلب تقدّم الطالب والأنشطة المقبولة
+//  Permission: canViewActivities
+// ======================================================
+router.get(
+  '/:studentUniId',
+  authorizePermission('canViewActivities'),
+  studentProgressController.getStudentProgress
+);
 
 module.exports = router;

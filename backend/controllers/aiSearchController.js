@@ -4,21 +4,21 @@ const fetch = (...args) =>
 const stringSimilarity = require("string-similarity");
 
 // ===============================================
-// 🤖 AI Search Controller (Role-based Intelligent Search)
+//  AI Search Controller (Role-based Intelligent Search)
 // ===============================================
 exports.aiSearch = async (req, res) => {
   try {
     const { q } = req.body;
     if (!q) return res.status(400).json({ error: "Missing query text" });
 
-    // ✅ استخراج الدور من التوكن
+    //  استخراج الدور من التوكن
     const userRole = req.user?.role || "student";
-    console.log("🎭 ROLE RECEIVED FROM TOKEN:", userRole);
+    console.log(" ROLE RECEIVED FROM TOKEN:", userRole);
 
-    console.log(`🎭 AI Search started by role: ${userRole}`);
+    console.log(` AI Search started by role: ${userRole}`);
 
     // ==========================================
-    // 1️⃣ جلب البيانات من قاعدة البيانات
+    //  جلب البيانات من قاعدة البيانات
     // ==========================================
     const [activities] = await db
       .promise()
@@ -27,7 +27,7 @@ exports.aiSearch = async (req, res) => {
     let students = [];
     let doctors = [];
 
-    // 👨‍🏫 الدكتور → الأنشطة + الطلاب
+    //  الدكتور → الأنشطة + الطلاب
     if (userRole === "doctor") {
       [students] = await db
         .promise()
@@ -36,13 +36,13 @@ exports.aiSearch = async (req, res) => {
           FROM users u
           JOIN students s ON u.id = s.user_id
         `);
-      console.log("👨‍🏫 Doctor role: searching activities + students");
+      console.log(" Doctor role: searching activities + students");
     }
 
-    // 🏢 مركز الخدمة → الأنشطة + الطلاب + دكاترة
-   // 🏢 مركز الخدمة → الأنشطة + الطلاب + دكاترة
+    //  مركز الخدمة → الأنشطة + الطلاب + دكاترة
+   //  مركز الخدمة → الأنشطة + الطلاب + دكاترة
 if (["service", "service_center", "center"].includes(userRole.toLowerCase())) {
-  console.log("📥 Fetching students & doctors for service center...");
+  console.log(" Fetching students & doctors for service center...");
 
   [students] = await db
     .promise()
@@ -51,7 +51,7 @@ if (["service", "service_center", "center"].includes(userRole.toLowerCase())) {
       FROM users u
       JOIN students s ON u.id = s.user_id
     `);
-  console.log("👩‍🎓 Students count:", students.length);
+  console.log(" Students count:", students.length);
 
   [doctors] = await db
     .promise()
@@ -60,12 +60,12 @@ if (["service", "service_center", "center"].includes(userRole.toLowerCase())) {
       FROM users
       WHERE role = 'doctor'
     `);
-  console.log("👨‍⚕️ Doctors count:", doctors.length);
+  console.log(" Doctors count:", doctors.length);
 }
 
 
-    // ✅ دمج البيانات حسب الدور
-  // ✅ دمج البيانات حسب الدور
+    //  دمج البيانات حسب الدور
+  //  دمج البيانات حسب الدور
 let combinedList = [...activities.map(a => ({ ...a, type: "activity" }))];
 
 if (userRole === "doctor") {
@@ -88,7 +88,7 @@ if (["service", "service_center", "center"].includes(userRole.toLowerCase())) {
       return res.status(404).json({ message: "No data available for search." });
 
     // ==========================================
-    // 2️⃣ بناء Prompt للذكاء الاصطناعي
+    //  بناء Prompt للذكاء الاصطناعي
     // ==========================================
     const listText = combinedList
       .map(
@@ -115,7 +115,7 @@ Rules:
 `;
 
     // ==========================================
-    // 3️⃣ استدعاء Ollama
+    //  استدعاء Ollama
     // ==========================================
     const ollamaRes = await fetch("http://127.0.0.1:11434/api/generate", {
       method: "POST",
@@ -133,7 +133,7 @@ Rules:
     if (text.startsWith("```")) text = text.replace(/```json|```/g, "").trim();
 
     // ==========================================
-    // 4️⃣ تحليل استجابة الذكاء
+    //  تحليل استجابة الذكاء
     // ==========================================
     let parsedResults;
     try {
@@ -148,7 +148,7 @@ Rules:
     if (!Array.isArray(parsedResults)) parsedResults = [parsedResults];
 
     // ==========================================
-    // 5️⃣ المطابقة الذكية
+    //  المطابقة الذكية
     // ==========================================
     const allItems = combinedList; // جاهزة بأنواعها
 
@@ -178,9 +178,9 @@ Rules:
     });
 
     // fallback في حال لم يوجد تطابق
-   // 🧠 fallback أذكى — فحص يدوي للأسماء إذا الذكاء ما وجد شيء
+   //  fallback أذكى — فحص يدوي للأسماء إذا الذكاء ما وجد شيء
 if (matched.length === 0) {
-  console.log("⚠️ No AI matches, trying local name similarity...");
+  console.log(" No AI matches, trying local name similarity...");
 
   // فحص يدوي إذا المستخدم كتب اسم شخص
   const allItemsLower = allItems.map(item => ({
@@ -198,7 +198,7 @@ if (matched.length === 0) {
     .sort((a, b) => b.similarity - a.similarity);
 
   if (nameMatches.length > 0) {
-    console.log(`✅ Local name match found: ${nameMatches[0].title}`);
+    console.log(` Local name match found: ${nameMatches[0].title}`);
     matched = nameMatches.map(item => ({
       id: item.id,
       title: item.title,
@@ -224,9 +224,9 @@ if (matched.length === 0) {
 
 
     // ==========================================
-    // 6️⃣ الرد النهائي
+    //  الرد النهائي
     // ==========================================
-    console.log(`✅ ${matched.length} results matched for [${userRole}] role`);
+    console.log(` ${matched.length} results matched for [${userRole}] role`);
     return res.json({
       query: q,
       role: userRole,
@@ -234,7 +234,7 @@ if (matched.length === 0) {
       matches: matched,
     });
   } catch (err) {
-    console.error("❌ AI Search Error:", err);
+    console.error(" AI Search Error:", err);
     res.status(500).json({ error: "AI semantic search failed" });
   }
 };

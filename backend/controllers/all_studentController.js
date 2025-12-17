@@ -1,4 +1,4 @@
-// 📁 backend/controllers/serviceController.js
+//  backend/controllers/serviceController.js
 const db = require("../db");
 
 exports.getStudentsForService = (req, res) => {
@@ -18,18 +18,18 @@ exports.getStudentsForService = (req, res) => {
 
     db.query(sql, (err, results) => {
       if (err) {
-        console.error("❌ Error fetching students for service:", err);
+        console.error(" Error fetching students for service:", err);
         return res.status(500).json({ message: "Database error" });
       }
 
       res.status(200).json({
         success: true,
-        message: "✅ Students fetched successfully",
+        message: " Students fetched successfully",
         data: results,
       });
     });
   } catch (err) {
-    console.error("❌ getStudentsForService Exception:", err);
+    console.error(" getStudentsForService Exception:", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };

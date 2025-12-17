@@ -1,30 +1,31 @@
-
-
+//  routes/adminActivitiesRoutes.js
 const express = require("express");
 const router = express.Router();
-const userController = require("../controllers/adminActivitiesController");
-const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
-const nodemailer = require("nodemailer");
-const db = require("../db");
-const verifyToken = require("../middleware/verifyToken");   // ✅ هذا السطر لازم
+
+const adminActivitiesController = require("../controllers/adminActivitiesController");
+const verifyToken = require("../middleware/verifyToken");
 const authorizePermission = require("../middleware/authorizePermission");
 
-
-
+// ======================================================
+//  تعيين طالب لدكتور
+//  Permission: canManageStudents
+// ======================================================
 router.post(
   "/admin/assign-student",
   verifyToken,
-  authorizePermission("canManageStudents"), // ❗ الصلاحية المطلوبة
-  userController.assignStudentToDoctor
+  authorizePermission("canManageStudents"),
+  adminActivitiesController.assignStudentToDoctor
 );
 
+// ======================================================
+//  جلب طلاب دكتور معين
+// Permission: canManageStudents
+// ======================================================
 router.get(
   "/admin/doctor/:doctorId/students",
   verifyToken,
-  authorizePermission("canManageStudents"), // ❗ نفس الصلاحية
-  userController.getDoctorStudents
+  authorizePermission("canManageStudents"),
+  adminActivitiesController.getDoctorStudents
 );
-
 
 module.exports = router;

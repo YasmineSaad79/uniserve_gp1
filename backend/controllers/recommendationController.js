@@ -7,7 +7,7 @@ exports.getRecommendations = async (req, res) => {
   try {
     const studentId = req.params.studentId;
 
-    // 1️⃣ fetch preferences + hobbies
+    // 1 fetch preferences + hobbies
     const [studentRows] = await db
       .promise()
       .query(
@@ -27,7 +27,7 @@ exports.getRecommendations = async (req, res) => {
     const hobbies = (studentRows[0].hobbies || "").toLowerCase();
     const text = `${prefs} ${hobbies}`;
 
-    // 2️⃣ fetch all services
+    // 2 fetch all services
     const [services] = await db
       .promise()
       .query(
@@ -41,7 +41,7 @@ exports.getRecommendations = async (req, res) => {
         `
       );
 
-    // 3️⃣ scoring system
+    // 3 scoring system
     let scores = {};
     services.forEach((s) => (scores[s.service_id] = 1));
 
@@ -80,7 +80,7 @@ exports.getRecommendations = async (req, res) => {
       }
     });
 
-    // 4️⃣ reduce score for services already done
+    // 4 reduce score for services already done
     const [history] = await db
       .promise()
       .query(
@@ -98,7 +98,7 @@ exports.getRecommendations = async (req, res) => {
       }
     });
 
-    // 5️⃣ sort by score
+    // 5 sort by score
     const sorted = services
       .map((s) => ({
         service_id: s.service_id,
@@ -111,7 +111,7 @@ exports.getRecommendations = async (req, res) => {
 
     return res.json({ recommendations: sorted });
   } catch (error) {
-    console.error("❌ Recommendation error:", error);
+    console.error(" Recommendation error:", error);
     return res.status(500).json({
       message: "Server error",
       error: error.message,

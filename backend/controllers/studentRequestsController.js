@@ -295,7 +295,7 @@ exports.updateRequestStatus = async (req, res) => {
       status,
     });
 
-    return res.json({ message: 'Status updated ✅', request_id: id, status });
+    return res.json({ message: 'Status updated ', request_id: id, status });
   } catch (err) {
     console.error('Error updating request status:', err);
     return res.status(500).json({ error: 'Server error' });

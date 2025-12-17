@@ -1,5 +1,5 @@
 // ============================
-// 📁 backend/controllers/messageController.js
+//  backend/controllers/messageController.js
 // ============================
 const db = require("../db");
 const Message = require("../models/messageModel");
@@ -13,9 +13,9 @@ const sendResponse = (res, success, message, data = null, code = 200) => {
 
 const MessageController = {
   // ======================================================
-  // 🟢 إرسال رسالة جديدة (نص + ملف اختياري) + إشعار FCM
+  //  إرسال رسالة جديدة (نص + ملف اختياري) + إشعار FCM
   // ======================================================
-// 🟢 إرسال رسالة جديدة (نص + ملف اختياري) + إشعار FCM
+// إرسال رسالة جديدة (نص + ملف اختياري) + إشعار FCM
 sendMessage: async (req, res) => {
   try {
 const { sender_id, receiver_id, content } = req.body;
@@ -60,7 +60,7 @@ const { sender_id, receiver_id, content } = req.body;
     // إرسال إشعار
    await sendPushToUser(
   receiver_id, // ← الطرف اللي لازم يصله الإشعار
-  `💬 New message from ${senderName}`,
+  ` New message from ${senderName}`,
   content ? content.substring(0, 80) : "Sent an attachment",
   {
     type: "chat",
@@ -84,7 +84,7 @@ const { sender_id, receiver_id, content } = req.body;
       201
     );
   } catch (err) {
-    console.error("❌ sendMessage Exception:", err);
+    console.error(" sendMessage Exception:", err);
     return sendResponse(
       res,
       false,
@@ -96,33 +96,33 @@ const { sender_id, receiver_id, content } = req.body;
 },
 
   // ======================================================
-  // 🔵 جلب محادثة بين مستخدمين
+  // جلب محادثة بين مستخدمين
   // ======================================================
   getConversation: (req, res) => {
     try {
       const { user1, user2 } = req.params;
       Message.getConversation(user1, user2, (err, rows) => {
         if (err) {
-          console.error("❌ getConversation:", err);
+          console.error(" getConversation:", err);
           return res.status(500).json({ message: "Database fetch error" });
         }
         return res.json(rows);
       });
     } catch (err) {
-      console.error("❌ getConversation Exception:", err);
+      console.error(" getConversation Exception:", err);
       return res.status(500).json({ message: "Internal server error" });
     }
   },
 
   // ======================================================
-  // 🟣 تعليم رسالة كمقروءة
+  //  تعليم رسالة كمقروءة
   // ======================================================
   markRead: (req, res) => {
     try {
       const { id } = req.params;
       Message.markAsRead(id, (err) => {
         if (err) {
-          console.error("❌ markRead:", err);
+          console.error(" markRead:", err);
           return sendResponse(
             res,
             false,
@@ -134,7 +134,7 @@ const { sender_id, receiver_id, content } = req.body;
         return sendResponse(res, true, "Message marked as read");
       });
     } catch (err) {
-      console.error("❌ markRead Exception:", err);
+      console.error(" markRead Exception:", err);
       return sendResponse(
         res,
         false,
@@ -146,14 +146,14 @@ const { sender_id, receiver_id, content } = req.body;
   },
 
   // ======================================================
-  // 🟡 عدد الرسائل غير المقروءة لمستخدم
+  //  عدد الرسائل غير المقروءة لمستخدم
   // ======================================================
   unreadCount: (req, res) => {
     try {
       const { userId } = req.params;
       Message.countUnreadForUser(userId, (err, row) => {
         if (err) {
-          console.error("❌ unreadCount:", err);
+          console.error(" unreadCount:", err);
           return sendResponse(
             res,
             false,
@@ -170,7 +170,7 @@ const { sender_id, receiver_id, content } = req.body;
         );
       });
     } catch (err) {
-      console.error("❌ unreadCount Exception:", err);
+      console.error(" unreadCount Exception:", err);
       return sendResponse(
         res,
         false,
@@ -182,7 +182,7 @@ const { sender_id, receiver_id, content } = req.body;
   },
 
   // ======================================================
-  // 🆕 unreadGrouped (للواجهة مع آخر رسالة وتاريخها)
+  // unreadGrouped (للواجهة مع آخر رسالة وتاريخها)
   // ======================================================
   unreadGrouped: (req, res) => {
     try {
@@ -225,7 +225,7 @@ const { sender_id, receiver_id, content } = req.body;
         [userId, userId, userId, userId, userId, userId],
         (err, rows) => {
           if (err) {
-            console.error("❌ unreadGrouped:", err);
+            console.error(" unreadGrouped:", err);
             return sendResponse(
               res,
               false,
@@ -243,7 +243,7 @@ const { sender_id, receiver_id, content } = req.body;
         }
       );
     } catch (err) {
-      console.error("❌ unreadGrouped Exception:", err);
+      console.error("unreadGrouped Exception:", err);
       return sendResponse(
         res,
         false,

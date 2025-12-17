@@ -1,28 +1,76 @@
-// routes/notifications.js
+//  routes/notifications.js
 const express = require('express');
 const router = express.Router();
+
 const verifyToken = require('../middleware/verifyToken');
+const authorizePermission = require('../middleware/authorizePermission');
 const controller = require('../controllers/notificationsController');
 
-// كل مسارات الإشعارات محمية
+// ======================================================
+//  كل مسارات الإشعارات محمية (Authentication)
+// ======================================================
 router.use(verifyToken);
 
-// حفظ/تحديث توكن جهاز للمستخدم الحالي
-router.post('/register-token', controller.registerDeviceToken);
+// ======================================================
+//  حفظ / تحديث Device Token للمستخدم
+//  Permission: canSendMessages
+// ======================================================
+router.post(
+  '/register-token',
+  authorizePermission('canSendMessages'),
+  controller.registerDeviceToken
+);
 
-// الطالب يطلب التطوع (ينشئ طلب + يرسل إشعار لمركز الخدمة)
-router.post('/volunteer-request', controller.createVolunteerRequest);
+// ======================================================
+//  الطالب يطلب التطوع
+// (إنشاء طلب + إرسال إشعار لمركز الخدمة)
+//  Permission: canSendMessages
+// ======================================================
+router.post(
+  '/volunteer-request',
+  authorizePermission('canSendMessages'),
+  controller.createVolunteerRequest
+);
 
-// قائمة إشعاراتي (للطرفين)
-router.get('/my', controller.listMyNotifications);
+// ======================================================
+//  قائمة إشعاراتي
+//  Permission: canViewMessages
+// ======================================================
+router.get(
+  '/my',
+  authorizePermission('canViewMessages'),
+  controller.listMyNotifications
+);
 
-// عدّاد غير المقروء
-router.get('/unread-count', controller.unreadCount);
+// ======================================================
+//  عدّاد الإشعارات غير المقروءة
+//  Permission: canViewMessages
+// ======================================================
+router.get(
+  '/unread-count',
+  authorizePermission('canViewMessages'),
+  controller.unreadCount
+);
 
-// علِّم كمقروء
-router.patch('/:id/read', controller.markAsRead);
+// ======================================================
+//  تعليم إشعار كمقروء
+//  Permission: canViewMessages
+// ======================================================
+router.patch(
+  '/:id/read',
+  authorizePermission('canViewMessages'),
+  controller.markAsRead
+);
 
-// مركز الخدمة يتخذ إجراء (قبول/رفض) ➜ تحديث الطلب + إنشاء إشعار للطالب
-router.post('/:id/act', controller.actOnNotification);
+// ======================================================
+//  مركز الخدمة يتخذ إجراء (قبول / رفض)
+//  تحديث الطلب + إشعار الطالب
+//  Permission: canProcessHours
+// ======================================================
+router.post(
+  '/:id/act',
+  authorizePermission('canProcessHours'),
+  controller.actOnNotification
+);
 
 module.exports = router;

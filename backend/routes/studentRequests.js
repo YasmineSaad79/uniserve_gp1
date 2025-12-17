@@ -1,19 +1,44 @@
-// routes/studentRequests.js
+//  routes/studentRequests.js
 const express = require('express');
 const router = express.Router();
+
 const verifyToken = require('../middleware/verifyToken');
+const authorizePermission = require('../middleware/authorizePermission');
 const controller = require('../controllers/studentRequestsController');
 
-// كل المسارات محمية
+// ======================================================
+//  كل المسارات محمية
+// ======================================================
 router.use(verifyToken);
 
-// POST   /api/student/requests               (إرسال اقتراح جديد + إشعار للمركز)
-router.post('/', controller.createRequest);
+// ======================================================
+//  إرسال اقتراح جديد + إشعار للمركز
+//  Permission: canSendMessages
+// ======================================================
+router.post(
+  '/',
+  authorizePermission('canSendMessages'),
+  controller.createRequest
+);
 
-// GET    /api/student/requests/:studentId    (studentId = رقم الجامعة String)
-router.get('/:studentId', controller.getRequestsByStudent);
+// ======================================================
+//  جلب طلبات طالب معيّن
+//  Permission: canViewProfile
+// ======================================================
+router.get(
+  '/:studentId',
+  authorizePermission('canViewProfile'),
+  controller.getRequestsByStudent
+);
 
-// PATCH  /api/student/requests/:id/status    (id = request_id) موافقة/رفض + إشعار للطالب
-router.patch('/:id/status', controller.updateRequestStatus);
+// ======================================================
+//  تحديث حالة الطلب (قبول / رفض) + إشعار للطالب
+//  Permission: canUpdateCustomRequests
+// ======================================================
+router.patch(
+  '/:id/status',
+  authorizePermission('canUpdateCustomRequests'),
+  controller.updateRequestStatus
+);
 
 module.exports = router;

@@ -52,6 +52,45 @@ class _CenterSubmissionsScreenState extends State<CenterSubmissionsScreen> {
     }
   }
 
+  Future<void> processHours() async {
+    try {
+      final token = await storage.read(key: 'authToken');
+
+      final url = Uri.parse("http://$serverIP:5000/api/hours/process");
+
+      final res = await http.post(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (res.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Hours processed and sent to doctors!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: ${res.body}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Error: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,166 +125,208 @@ class _CenterSubmissionsScreenState extends State<CenterSubmissionsScreen> {
       // ---------------------- BODY ------------------------
       body: loading
           ? const Center(child: CircularProgressIndicator())
-          : students.isEmpty
-              ? const Center(
-                  child: Text(
-                    "No submissions yet.",
-                    style: TextStyle(color: Colors.grey),
+          : Column(
+              children: [
+                // ⭐⭐⭐ زر Process Hours
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 4,
+                    ),
+                    icon: const Icon(Icons.send, color: Colors.white),
+                    label: const Text(
+                      "Process All Hours",
+                      style: TextStyle(
+                        fontFamily: "Baloo",
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                    onPressed: () async {
+                      await processHours();
+                      fetchSummary(); // ← إعادة تحميل البيانات بعد المعالجة
+                    },
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: students.length,
-                  itemBuilder: (context, index) {
-                    final s = students[index];
+                ),
 
-                    final studentId = s["student_id"];
-                    final name = s["full_name"];
-                    final totalHours = s["total_hours"];
-                    final photo = s["photo_url"] != null
-                        ? "http://$serverIP:5000${s["photo_url"]}"
-                        : null;
-
-                    final submissions = s["submissions"] ?? [];
-                    final submissionsCount = submissions.length;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 18),
-                      child: Material(
-                        elevation: 6,
-                        shadowColor: Colors.purple.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFFF7F2FF),
-                                Color(0xFFEDE3FF),
-                              ],
-                            ),
+                // ⭐⭐⭐ باقي الصفحة
+                Expanded(
+                  child: students.isEmpty
+                      ? const Center(
+                          child: Text(
+                            "No submissions yet.",
+                            style: TextStyle(color: Colors.grey),
                           ),
+                        )
+                      : ListView.builder(
                           padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              // ---------------- Avatar ----------------
-                              Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 3,
+                          itemCount: students.length,
+                          itemBuilder: (context, index) {
+                            final s = students[index];
+
+                            final name = s["full_name"];
+                            final totalHours = s["total_hours"];
+                            final photo = s["photo_url"] != null
+                                ? "http://$serverIP:5000${s["photo_url"]}"
+                                : null;
+
+                            final submissions = s["submissions"] ?? [];
+                            final submissionsCount = submissions.length;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 18),
+                              child: Material(
+                                elevation: 6,
+                                shadowColor: Colors.purple.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Color(0xFFF7F2FF),
+                                        Color(0xFFEDE3FF),
+                                      ],
+                                    ),
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.purple.withOpacity(0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                  image: photo != null
-                                      ? DecorationImage(
-                                          image: NetworkImage(photo),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
-                                ),
-                              ),
-
-                              const SizedBox(width: 18),
-
-                              // ---------------- Student Info ----------------
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: const TextStyle(
-                                        fontSize: 19,
-                                        fontFamily: "Baloo",
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF4A148C),
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    children: [
+                                      // ---------------- Avatar ----------------
+                                      Container(
+                                        width: 60,
+                                        height: 60,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 3,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.purple
+                                                  .withOpacity(0.2),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                          image: photo != null
+                                              ? DecorationImage(
+                                                  image: NetworkImage(photo),
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : null,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.timer_outlined,
-                                            size: 18, color: Colors.purple),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          "Hours: $totalHours",
-                                          style: const TextStyle(
-                                            color: Colors.purple,
-                                            fontWeight: FontWeight.w600,
+
+                                      const SizedBox(width: 18),
+
+                                      // ---------------- Student Info ----------------
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name,
+                                              style: const TextStyle(
+                                                fontSize: 19,
+                                                fontFamily: "Baloo",
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF4A148C),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.timer_outlined,
+                                                    size: 18,
+                                                    color: Colors.purple),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  "Hours: $totalHours",
+                                                  style: const TextStyle(
+                                                    color: Colors.purple,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                    Icons.file_copy_outlined,
+                                                    size: 18,
+                                                    color: Colors.grey),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  "Submissions: $submissionsCount",
+                                                  style: const TextStyle(
+                                                      color: Colors.grey),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      // ---------------- View Button ----------------
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 18, vertical: 10),
+                                          backgroundColor: Colors.purple,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(14),
+                                          ),
+                                          elevation: 3,
+                                        ),
+                                        onPressed: () async {
+                                          final updated = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  StudentSubmissionDetailsScreen(
+                                                studentData: s,
+                                              ),
+                                            ),
+                                          );
+
+                                          if (updated == true) {
+                                            fetchSummary();
+                                            setState(() {});
+                                          }
+                                        },
+                                        child: const Text(
+                                          "View",
+                                          style: TextStyle(
+                                            fontFamily: "Baloo",
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.file_copy_outlined,
-                                            size: 18, color: Colors.grey),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          "Submissions: $submissionsCount",
-                                          style: const TextStyle(
-                                              color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // ---------------- View Button ----------------
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 18, vertical: 10),
-                                  backgroundColor: Colors.purple,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  elevation: 3,
-                                ),
-                                onPressed: () async {
-                                  final updated = await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          StudentSubmissionDetailsScreen(
-                                        studentData: s,
                                       ),
-                                    ),
-                                  );
-
-                                  if (updated == true) {
-                                    fetchSummary();
-                                    setState(() {});
-                                  }
-                                },
-                                child: const Text(
-                                  "View",
-                                  style: TextStyle(
-                                    fontFamily: "Baloo",
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    ],
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                      ),
-                    );
-                  },
                 ),
+              ],
+            ),
     );
   }
 }

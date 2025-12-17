@@ -2,7 +2,7 @@ const db = require('../db');
 const fs = require('fs');
 const path = require('path');
 
-// 🔧 تحويل تاريخ ISO إلى تنسيق MySQL
+//  تحويل تاريخ ISO إلى تنسيق MySQL
 const formatForMySQL = (isoDate) => {
   if (!isoDate) return null;
   const date = new Date(isoDate);
@@ -17,7 +17,7 @@ exports.getAllActivities = (req, res) => {
 
   db.query(query, (err, results) => {
     if (err) {
-      console.error("❌ Error fetching activities:", err);
+      console.error(" Error fetching activities:", err);
       return res.status(500).json({ success: false, message: "Database error" });
     }
 
@@ -51,7 +51,7 @@ exports.getActivityById = (req, res) => {
 
   db.query(query, [id], (err, results) => {
     if (err) {
-      console.error("❌ Error fetching activity:", err);
+      console.error(" Error fetching activity:", err);
       return res.status(500).json({ success: false, message: "Database error" });
     }
 
@@ -114,7 +114,7 @@ exports.addActivity = (req, res) => {
 
   db.query(sql, values, (err, result) => {
     if (err) {
-      console.error("❌ Error adding activity:", err);
+      console.error(" Error adding activity:", err);
       return res.status(500).json({ success: false, message: "Database insert error." });
     }
 
@@ -143,7 +143,7 @@ exports.updateActivity = (req, res) => {
     status,
   } = req.body;
 
-  // 🖼️ إذا تم رفع ملفات جديدة
+  //  إذا تم رفع ملفات جديدة
   const imagePath = req.files?.image?.[0]?.filename
     ? "uploads/" + req.files.image[0].filename
     : undefined;
@@ -182,7 +182,7 @@ exports.updateActivity = (req, res) => {
 
   db.query(updateQuery, updateValues, (err, result) => {
     if (err) {
-      console.error("❌ Error updating activity:", err);
+      console.error(" Error updating activity:", err);
       return res
         .status(500)
         .json({ success: false, message: "Database update error." });
@@ -218,16 +218,16 @@ exports.deleteActivity = (req, res) => {
     const deleteSql = "DELETE FROM services WHERE service_id = ?";
     db.query(deleteSql, [id], (err, result) => {
       if (err) {
-        console.error("❌ Error deleting activity:", err);
+        console.error(" Error deleting activity:", err);
         return res.status(500).json({ success: false, message: "Database delete error." });
       }
 
-      // 🗑️ حذف الصورة من المجلد
+      //  حذف الصورة من المجلد
       if (imagePath && imagePath !== "uploads/default.jpg") {
         const fullPath = path.join(__dirname, '..', imagePath);
         if (fs.existsSync(fullPath)) {
           fs.unlinkSync(fullPath);
-          console.log(`🗑️ Deleted file: ${imagePath}`);
+          console.log(` Deleted file: ${imagePath}`);
         }
       }
 

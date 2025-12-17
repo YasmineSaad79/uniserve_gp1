@@ -22,14 +22,22 @@ router.get(
   getStudentSubmission
 );
 
+/*
 router.post(
   "/upload",
   verifyToken,
   uploadSubmission.single("submission_file"),
   uploadSubmissionFile
 );
+*/
 
-// 🟣 NEW — Get all submissions for student
+router.post(
+  "/upload",
+  verifyToken,
+  uploadSubmission.single("file"),
+  uploadSubmissionFile
+);
+//  NEW — Get all submissions for student
 router.get("/student/:studentId/all", getStudentAllSubmissions);
 
 

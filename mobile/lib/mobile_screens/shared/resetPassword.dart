@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../signin_screen.dart';
+import '../../shared_screens/signin_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
