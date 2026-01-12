@@ -42,8 +42,10 @@ class WavyClipper extends CustomClipper<Path> {
     final secondControl = Offset(size.width * 0.85, size.height - 70);
     final secondEnd = Offset(size.width, size.height - 20);
 
-    path.quadraticBezierTo(firstControl.dx, firstControl.dy, firstEnd.dx, firstEnd.dy);
-    path.quadraticBezierTo(secondControl.dx, secondControl.dy, secondEnd.dx, secondEnd.dy);
+    path.quadraticBezierTo(
+        firstControl.dx, firstControl.dy, firstEnd.dx, firstEnd.dy);
+    path.quadraticBezierTo(
+        secondControl.dx, secondControl.dy, secondEnd.dx, secondEnd.dy);
 
     path.lineTo(size.width, 0);
     path.close();
@@ -89,7 +91,8 @@ class _SigninScreenState extends State<SigninScreen> {
     try {
       await storage.deleteAll();
 
-      final response = await ApiService.signIn(email: email, password: password);
+      final response =
+          await ApiService.signIn(email: email, password: password);
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
@@ -127,7 +130,6 @@ class _SigninScreenState extends State<SigninScreen> {
             print("📱 Saved MOBILE token = $token");
           }
         }
-
 
         // 🔥 Register FCM Token
         try {
@@ -217,8 +219,7 @@ class _SigninScreenState extends State<SigninScreen> {
               ),
             );
           }
-        }
- else if (role == 'service_center') {
+        } else if (role == 'service_center') {
           if (kIsWeb) {
             // 🌐 WEB → صفحة مركز الخدمة (Web)
             Navigator.pushReplacement(
@@ -236,7 +237,7 @@ class _SigninScreenState extends State<SigninScreen> {
               ),
             );
           }
-        }else if (role == 'admin') {
+        } else if (role == 'admin') {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const AdminHomeScreen()),
@@ -268,7 +269,7 @@ class _SigninScreenState extends State<SigninScreen> {
   // ===============================================================
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    final Color primary = Colors.purple;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -303,11 +304,13 @@ class _SigninScreenState extends State<SigninScreen> {
                 top: 30,
                 left: 1,
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 25),
+                  icon: const Icon(Icons.arrow_back,
+                      color: Colors.white, size: 25),
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (_) => const WelcomeScreen(role: "")),
+                      MaterialPageRoute(
+                          builder: (_) => const WelcomeScreen(role: "")),
                     );
                   },
                 ),
@@ -331,14 +334,14 @@ class _SigninScreenState extends State<SigninScreen> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 30),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 30),
                     child: Column(
                       children: [
                         const SizedBox(height: 80),
-                        Image.asset('assets/images/uniserve_logo.jpeg', height: 160),
-
+                        Image.asset('assets/images/uniserve_logo.jpeg',
+                            height: 160),
                         const SizedBox(height: 20),
-
                         TextField(
                           controller: emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -349,7 +352,6 @@ class _SigninScreenState extends State<SigninScreen> {
                           ),
                         ),
                         const SizedBox(height: 15),
-
                         TextField(
                           controller: passwordController,
                           obscureText: !showPassword,
@@ -369,14 +371,15 @@ class _SigninScreenState extends State<SigninScreen> {
                             ),
                           ),
                         ),
-
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const ResetPasswordScreen()),
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ResetPasswordScreen()),
                               );
                             },
                             child: const Text(
@@ -385,9 +388,7 @@ class _SigninScreenState extends State<SigninScreen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 10),
-
                         ElevatedButton(
                           onPressed: isLoading ? null : loginUser,
                           style: ElevatedButton.styleFrom(
@@ -401,23 +402,24 @@ class _SigninScreenState extends State<SigninScreen> {
                               ? const SizedBox(
                                   height: 24,
                                   width: 24,
-                                  child: CircularProgressIndicator(color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white),
                                 )
                               : const Text(
                                   "Sign In",
-                                  style: TextStyle(fontSize: 16, color: Colors.white),
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.white),
                                 ),
                         ),
-
                         const SizedBox(height: 20),
-
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text("Don't have an account? "),
                             GestureDetector(
                               onTap: () {
-                                Navigator.pushReplacementNamed(context, '/signup');
+                                Navigator.pushReplacementNamed(
+                                    context, '/signup');
                               },
                               child: const Text(
                                 "Sign Up",

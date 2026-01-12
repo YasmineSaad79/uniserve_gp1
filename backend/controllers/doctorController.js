@@ -119,21 +119,28 @@ exports.getDoctorStudentsForDoctor = async (req, res) => {
 
     const [students] = await db.promise().query(
       `
-      SELECT 
+      SELECT DISTINCT
         u.id,
         u.full_name,
         u.email,
-        u.photo_url
+        u.photo_url,
+        s.student_id
       FROM student_doctor sd
       JOIN users u ON u.id = sd.student_user_id
+      JOIN students s ON s.user_id = u.id
       WHERE sd.doctor_user_id = ?
       ORDER BY u.full_name ASC
-    `,
+      `,
       [doctorId]
     );
 
-    res.json({ count: students.length, data: students });
+    res.json({
+      success: true,
+      count: students.length,
+      data: students,
+    });
   } catch (err) {
+    console.error("❌ getDoctorStudentsForDoctor error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };

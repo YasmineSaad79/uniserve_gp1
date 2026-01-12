@@ -26,6 +26,39 @@ class TokenService {
   }
 
   // ===================================================
+  // 👤 Extract user id from JWT (handles id / user_id)
+  // ===================================================
+  static Future<int?> getUserIdFixed() async {
+    try {
+      final token = await getToken();
+      if (token == null || token.isEmpty) return null;
+
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      final payload = jsonDecode(
+        utf8.decode(
+          base64Url.decode(
+            base64Url.normalize(parts[1]),
+          ),
+        ),
+      );
+
+      // دعم أكثر من اسم محتمل داخل الـ JWT
+      final dynamic raw =
+          payload['user_id'] ?? payload['id'] ?? payload['userId'];
+
+      if (raw is int) return raw;
+      if (raw is String) return int.tryParse(raw);
+
+      return null;
+    } catch (e) {
+      debugPrint("❌ TokenService.getUserIdFixed error: $e");
+      return null;
+    }
+  }
+
+  // ===================================================
   // 💾 Save Token (Web + Mobile)
   // ===================================================
   static Future<void> saveToken(String token) async {

@@ -4,38 +4,33 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:mobile/web_screens/doctor/doctor_home_web.dart';
+import 'mobile_screens/admin/AdminUsersScreen.dart';
+import 'mobile_screens/admin/AdminRolesScreen.dart';
 
-// إشعارات محلية
 import 'services/notifications.dart';
 
-// API
 import 'services/api_service.dart';
 
-// شاشات عامة
 import 'shared_screens/start_screen.dart';
 import 'shared_screens/signup_screen.dart';
 import 'shared_screens/signin_screen.dart';
 import 'mobile_screens/shared/resetPassword.dart';
 import 'shared_screens/welcome_screen.dart';
 
-// شاشات مركز الخدمة
 import 'mobile_screens/center/addActivityScreen.dart';
 import 'mobile_screens/center/viewActivitiesScreen.dart';
 import 'mobile_screens/center/serviceHome.dart';
 
-// شاشات الأدمن
 import 'mobile_screens/admin/adminHomeScreen.dart';
 import 'mobile_screens/admin/selectDoctorScreen.dart';
 import 'mobile_screens/admin/assignStudentScreen.dart';
 import 'mobile_screens/admin/doctorStudentsScreen.dart';
 import 'mobile_screens/student/all_students_page.dart';
 
-//  CHAT ROUTER (المهم)
 import 'web_screens/student/ChatScreenRouter.dart';
 import 'web_screens/student/student_suggest_activity_web.dart';
 import 'web_screens/student/view_my_suggestions.dart';
 
-// Firebase Web Config
 const FirebaseOptions firebaseWebOptions = FirebaseOptions(
   apiKey: "AIzaSyBFWs4Q-00AjNt32EGivL6i_tRuIqDOFkI",
   authDomain: "uniserve-67027.firebaseapp.com",
@@ -46,7 +41,6 @@ const FirebaseOptions firebaseWebOptions = FirebaseOptions(
   measurementId: "G-SHSN7Y3Y1X",
 );
 
-// NAVIGATOR GLOBAL KEY
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 @pragma('vm:entry-point')
@@ -89,10 +83,9 @@ class _MyAppState extends State<MyApp> {
   Future<void> _initFirebaseAndFCM() async {
     if (kIsWeb) {
       await Firebase.initializeApp(options: firebaseWebOptions);
-      return; //  لا FCM listeners على الويب
+      return;
     }
 
-    // ===== MOBILE ONLY =====
     await Firebase.initializeApp();
 
     FirebaseMessaging.onBackgroundMessage(_bgHandler);
@@ -126,27 +119,22 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: false,
       ),
       home: const StartScreen(),
-
       routes: {
         '/start': (_) => const StartScreen(),
         '/welcome': (_) => const WelcomeScreen(role: 'student'),
         '/signin': (_) => const SigninScreen(),
         '/signup': (_) => const SignupScreen(),
         '/reset': (_) => const ResetPasswordScreen(),
-
-        // CENTER
         '/service-home': (_) => const ServiceHomeScreen(),
         '/add-activity': (_) => const AddActivityScreen(),
         '/view-activities': (_) => const ViewActivitiesScreen(),
-
-        // ADMIN
         '/admin-home': (_) => const AdminHomeScreen(),
         '/selectDoctor': (_) => const SelectDoctorScreen(),
         '/assignStudent': (_) => const AssignStudentScreen(),
         '/doctorStudents': (_) => const DoctorStudentsScreen(),
         '/viewAllStudents': (_) => const StudentsPage(),
-
-        // CHAT (Router يقرر Web / Mobile)
+        "/adminUsers": (context) => const AdminUsersScreen(),
+        "/adminRoles": (_) => const AdminRolesScreen(),
         '/chat': (_) => const ChatScreenRouter(),
         '/doctor/web': (_) => const DoctorHomeWeb(),
       },

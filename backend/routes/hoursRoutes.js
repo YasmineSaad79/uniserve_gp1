@@ -29,5 +29,10 @@ router.get(
   authorizePermission("canViewStudents"),
   hoursController.getDoctorSummary
 );
-
+router.post(
+  "/send-result/:studentUserId",
+  verifyToken,
+  authorizePermission("canSendResult"),
+  hoursController.sendResultToStudent
+);
 module.exports = router;

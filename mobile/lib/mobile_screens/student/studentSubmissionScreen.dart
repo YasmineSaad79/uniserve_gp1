@@ -46,7 +46,7 @@ class _StudentSubmissionScreenState extends State<StudentSubmissionScreen> {
 
   Future<void> _loadAllSubmissions(int userId) async {
     try {
-      final data = await ApiService.getStudentAllSubmissions(userId.toString());
+      final data = await ApiService.getStudentAllSubmissions(userId);
 
       setState(() {
         submissions = data;

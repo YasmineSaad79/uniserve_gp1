@@ -63,169 +63,187 @@ class _ShowDoctorProfileScreenState extends State<ShowDoctorProfileScreen> {
       });
     } catch (e) {
       loading = false;
-      print("⚠ Error fetching doctor profile: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: const Color(0xFFF6EEFF),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.purple),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF6A1B9A)),
           onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
-        title: const Text(
-          "My Profile",
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
         ),
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.purple))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
+            )
           : SingleChildScrollView(
               child: Column(
                 children: [
-                  // 🎨 الخلفية المتدرجة مثل السنتر
+                  const SizedBox(height: 10),
+
+                  // ===== Title =====
+                  const Text(
+                    "Doctor Profile",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6A1B9A),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ===== Avatar =====
                   Container(
-                    height: 140,
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF7E57C2), Color(0xFF512DA8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: const Color(0xFF6A1B9A),
+                        width: 3,
                       ),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(40),
-                        bottomRight: Radius.circular(40),
-                      ),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const SizedBox(),
-                  ),
-
-                  // 🖼 صورة الدكتور فوق الكارد
-                  Transform.translate(
-                    offset: const Offset(0, -60),
-                    child: CircleAvatar(
-                      radius: 55,
-                      backgroundColor: Colors.white,
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage: photoUrl != null
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image(
+                        width: 110,
+                        height: 110,
+                        fit: BoxFit.cover,
+                        image: photoUrl != null
                             ? NetworkImage(photoUrl!)
-                            : const AssetImage("assets/images/default.png")
-                                as ImageProvider,
+                            : const AssetImage(
+                                "assets/images/default.png",
+                              ) as ImageProvider,
                       ),
                     ),
                   ),
 
-                  // 📄 كارد البروفايل
-                  Transform.translate(
-                    offset: const Offset(0, -40),
-                    child: Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 22, vertical: 0),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 25),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                  const SizedBox(height: 25),
+
+                  // ===== Info Card =====
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 22),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFE1FF),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: const Color(0xFFB388FF),
                       ),
-                      child: Column(
-                        children: [
-                          Text(
-                            fullName,
-                            style: const TextStyle(
-                              fontSize: 22,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Center(
+                          child: Text(
+                            "Personal Information",
+                            style: TextStyle(
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF512DA8),
+                              color: Color(0xFF6A1B9A),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            email,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-
-                          // badge نفس شكل السنتر
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 18, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.shade50,
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            child: const Text(
-                              "DOCTOR",
-                              style: TextStyle(
-                                color: Color(0xFF512DA8),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 25),
-
-                          // زر التعديل
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.edit, color: Colors.white),
-                              label: const Text(
-                                "Edit Profile",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white, // ← اللون الأبيض
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF5E35B1),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 3,
-                              ),
-                              onPressed: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => EditDoctorProfileScreen(
-                                      doctorId: widget.doctorId,
-                                      onUpdated: _fetchDoctorProfile,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 20),
+                        _infoRow(Icons.person, "Full Name", fullName),
+                        _infoRow(Icons.email, "Email", email),
+                        _infoRow(Icons.badge, "Role", "Doctor"),
+                      ],
                     ),
                   ),
+
+                  const SizedBox(height: 25),
+
+                  // ===== Buttons =====
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey.shade300,
+                              foregroundColor: Colors.black87,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: () {},
+                            child: const Text("Update Password"),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6A1B9A),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EditDoctorProfileScreen(
+                                    doctorId: widget.doctorId,
+                                    onUpdated: _fetchDoctorProfile,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text("Edit Profile"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF6A1B9A), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF6A1B9A),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value.isEmpty ? "Not provided" : value,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

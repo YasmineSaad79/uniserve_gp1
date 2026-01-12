@@ -64,6 +64,7 @@ exports.getDoctorSummary = async (req, res) => {
     const [rows] = await db.promise().query(
       `
       SELECT 
+        u.id AS student_user_id,        -- ⭐⭐⭐ هذا المهم
         u.full_name,
         u.student_id,
         summary.total_hours,
@@ -81,6 +82,88 @@ exports.getDoctorSummary = async (req, res) => {
 
   } catch (err) {
     console.error(" Error fetching doctor summary:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+exports.sendResultToStudent = async (req, res) => {
+  try {
+    const doctorUserId = req.user.id; // من التوكن
+    const studentUserId = req.params.studentUserId;
+
+    // 1️⃣ جلب النتيجة
+    const [rows] = await db.promise().query(
+      `
+      SELECT total_hours, result, status
+      FROM student_hours_summary
+      WHERE student_user_id = ?
+        AND doctor_user_id = ?
+      `,
+      [studentUserId, doctorUserId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Result not found." });
+    }
+
+    const summary = rows[0];
+
+    if (summary.status === "sent_to_student") {
+      return res
+        .status(400)
+        .json({ message: "Result already sent to student." });
+    }
+
+    // 2️⃣ إنشاء إشعار للطالب (✔️ مطابق للـ DB)
+    await db.promise().query(
+      `
+      INSERT INTO notifications
+      (
+        type,
+        receiver_id,
+        sender_user_id,
+        title,
+        body,
+        payload
+      )
+      VALUES
+      (
+        'academic_result',
+        ?,
+        ?,
+        ?,
+        ?,
+        ?
+      )
+      `,
+      [
+        studentUserId,      // receiver_id
+        doctorUserId,       // sender_user_id
+        "Course Result",
+        summary.result === "pass"
+          ? "Congratulations! You have passed the course 🎉"
+          : "Unfortunately, you have failed the course.",
+        JSON.stringify({
+          result: summary.result,
+          total_hours: summary.total_hours,
+        }),
+      ]
+    );
+
+    // 3️⃣ تحديث الحالة
+    await db.promise().query(
+      `
+      UPDATE student_hours_summary
+      SET status = 'sent_to_student'
+      WHERE student_user_id = ?
+        AND doctor_user_id = ?
+      `,
+      [studentUserId, doctorUserId]
+    );
+
+    res.json({ message: "Result sent to student successfully." });
+
+  } catch (err) {
+    console.error("❌ Error sending result:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

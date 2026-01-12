@@ -51,6 +51,53 @@ class _SignupScreenState extends State<SignupScreen> {
   bool showConfirmPassword = false;
   bool isLoading = false;
 
+  // ============================
+  // Dynamic blocked dialog
+  // ============================
+  void showRegistrationBlockedDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.block, color: Colors.red, size: 28),
+            SizedBox(width: 10),
+            Text(
+              "Registration Blocked",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 15),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "OK",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================
+  // Register user
+  // ============================
   Future<void> registerUser() async {
     if (selectedRole.isEmpty ||
         fullName.text.isEmpty ||
@@ -63,8 +110,8 @@ class _SignupScreenState extends State<SignupScreen> {
     }
 
     if (password.text != confirmPassword.text) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Passwords don't match ❌")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Passwords don't match ❌")));
       return;
     }
 
@@ -82,12 +129,31 @@ class _SignupScreenState extends State<SignupScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (_) => UploadPhotoScreen(userEmail: email.text.trim())),
+            builder: (_) => UploadPhotoScreen(
+              userEmail: email.text.trim(),
+            ),
+          ),
         );
+      } else if (res.statusCode == 403) {
+        if (selectedRole == "student") {
+          showRegistrationBlockedDialog(
+            "You are not enrolled in this course.\n\n"
+            "Please contact the service center to be added before signing up.",
+          );
+        } else if (selectedRole == "doctor") {
+          showRegistrationBlockedDialog(
+            "Doctor accounts are created by administration only.\n\n"
+            "Please contact the administrator.",
+          );
+        }
       } else {
-        final error = jsonDecode(res.body);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error["message"] ?? "Error")));
+        final body = jsonDecode(res.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(body["message"] ?? "Registration failed"),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context)
@@ -97,6 +163,9 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  // ============================
+  // Role button
+  // ============================
   Widget roleButton(String label, String value) {
     final isSelected = selectedRole == value;
 
@@ -137,186 +206,195 @@ class _SignupScreenState extends State<SignupScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-
-      /// ⭐⭐⭐ Scrollbar added HERE so it appears ONLY on the right
       body: LayoutBuilder(
-          builder: (context, constraints) {
-            return Stack(
-              children: [
-                // ---------------- HEADER ----------------
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: ClipPath(
-                    clipper: WavyClipper(),
-                    child: Container(
-                      height: 180,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            primary.withOpacity(0.9),
-                            primary.withOpacity(0.6),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+        builder: (context, constraints) {
+          return Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: ClipPath(
+                  clipper: WavyClipper(),
+                  child: Container(
+                    height: 180,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          primary.withOpacity(0.9),
+                          primary.withOpacity(0.6),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 30,
+                left: 10,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back,
+                      color: Colors.white, size: 26),
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const WelcomeScreen(role: "")),
+                    );
+                  },
+                ),
+              ),
+              Positioned(
+                top: 55,
+                left: 70,
+                child: Text(
+                  "Create your account",
+                  style: GoogleFonts.baloo2(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 150),
+                      Image.asset(
+                        "assets/images/uniserve_logo.jpeg",
+                        height: 150,
+                      ),
+                      const SizedBox(height: 20),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          child: Column(
+                            children: [
+                              const Text(
+                                "Please select your category",
+                                style: TextStyle(color: Colors.purple),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  roleButton("Student", "student"),
+                                  const SizedBox(width: 10),
+                                  roleButton("Doctor", "doctor"),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                "Note: Sign up is restricted to users approved by administration",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 25),
+                              TextField(
+                                controller: fullName,
+                                decoration: field(
+                                  "Full Name (First Middle Last)",
+                                  Icons.person,
+                                ),
+                              ),
+                              const SizedBox(height: 15),
+                              TextField(
+                                controller: email,
+                                decoration: field("Email Address", Icons.email),
+                              ),
+                              const SizedBox(height: 15),
+                              TextField(
+                                controller: password,
+                                obscureText: !showPassword,
+                                decoration:
+                                    field("Password", Icons.lock).copyWith(
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      showPassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                    ),
+                                    onPressed: () => setState(
+                                        () => showPassword = !showPassword),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 15),
+                              TextField(
+                                controller: confirmPassword,
+                                obscureText: !showConfirmPassword,
+                                decoration:
+                                    field("Confirm Password", Icons.lock)
+                                        .copyWith(
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      showConfirmPassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                    ),
+                                    onPressed: () => setState(() =>
+                                        showConfirmPassword =
+                                            !showConfirmPassword),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 30),
+                              ElevatedButton(
+                                onPressed: isLoading ? null : registerUser,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primary,
+                                  minimumSize: const Size(double.infinity, 50),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(25),
+                                  ),
+                                ),
+                                child: isLoading
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white)
+                                    : const Text(
+                                        "Sign Up",
+                                        style: TextStyle(
+                                            color: Colors.white, fontSize: 16),
+                                      ),
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text("Already have an account? "),
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const SigninScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      "Sign In",
+                                      style: TextStyle(color: Colors.purple),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-
-                // Back Button
-                Positioned(
-                  top: 30,
-                  left: 10,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back,
-                        color: Colors.white, size: 26),
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const WelcomeScreen(role: "")),
-                      );
-                    },
-                  ),
-                ),
-
-                // Page Title
-                Positioned(
-                  top: 55,
-                  left: 70,
-                  child: Text(
-                    "Create your account",
-                    style: GoogleFonts.baloo2(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-
-                // ---------------- CONTENT ----------------
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 30, vertical: 40),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 60),
-
-                          Image.asset("assets/images/uniserve_logo.jpeg",
-                              height: 150),
-
-                          const SizedBox(height: 20),
-
-                          const Text("Please select your category",
-                              style: TextStyle(color: Colors.purple)),
-                          const SizedBox(height: 12),
-
-                          Row(
-                            children: [
-                              roleButton("Student", "student"),
-                              const SizedBox(width: 10),
-                              roleButton("Doctor", "doctor"),
-                            ],
-                          ),
-
-                          const SizedBox(height: 25),
-
-                          TextField(
-                            controller: fullName,
-                            decoration: field(
-                                "Full Name (First Middle Last)", Icons.person),
-                          ),
-                          const SizedBox(height: 15),
-
-                          TextField(
-                            controller: email,
-                            decoration: field("Email Address", Icons.email),
-                          ),
-                          const SizedBox(height: 15),
-
-                          TextField(
-                            controller: password,
-                            obscureText: !showPassword,
-                            decoration:
-                                field("Password", Icons.lock).copyWith(
-                              suffixIcon: IconButton(
-                                icon: Icon(showPassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility),
-                                onPressed: () => setState(
-                                    () => showPassword = !showPassword),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-
-                          TextField(
-                            controller: confirmPassword,
-                            obscureText: !showConfirmPassword,
-                            decoration:
-                                field("Confirm Password", Icons.lock).copyWith(
-                              suffixIcon: IconButton(
-                                icon: Icon(showConfirmPassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility),
-                                onPressed: () => setState(() =>
-                                    showConfirmPassword = !showConfirmPassword),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 30),
-
-                          ElevatedButton(
-                            onPressed: isLoading ? null : registerUser,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primary,
-                              minimumSize: const Size(double.infinity, 50),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25)),
-                            ),
-                            child: isLoading
-                                ? const CircularProgressIndicator(
-                                    color: Colors.white)
-                                : const Text("Sign Up",
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 16)),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text("Already have an account? "),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (_) =>
-                                              const SigninScreen()));
-                                },
-                                child: const Text("Sign In",
-                                    style: TextStyle(color: Colors.purple)),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      );
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }

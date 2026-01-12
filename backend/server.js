@@ -39,6 +39,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // مهم للتعامل مع البيانات المرسلة من النماذج (Forms/PUT requests)
 app.use("/api/ai", aiSearchRoutes);
 app.use("/api/ai", aiCenterRoutes);
+app.use("/api", require("./routes/adminRolesRoutes"));
+app.use("/api", require("./routes/adminUsersRoutes"));
 //  Routes (التوجيه) - تجميع جميع المسارات تحت /api
 app.use("/api/users", userRoutes); // تسجيل الدخول/الخروج/إعادة تعيين كلمة المرور
 app.use("/api/profile", profileRoutes); // إدارة بروفايل المستخدمين

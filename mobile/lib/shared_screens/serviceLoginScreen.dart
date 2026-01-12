@@ -274,7 +274,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 // WEB HOME
 import '../web_screens/center/service_home_web.dart';
 
-
 // ====================== Wavy Header ======================
 class WavyClipper extends CustomClipper<Path> {
   @override
@@ -355,8 +354,7 @@ class _ServiceLoginScreenState extends State<ServiceLoginScreen> {
       setState(() => _loading = false);
 
       if (response.statusCode != 200) {
-        final msg =
-            jsonDecode(response.body)["message"] ?? "Login failed ❌";
+        final msg = jsonDecode(response.body)["message"] ?? "Login failed ❌";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
@@ -387,10 +385,8 @@ class _ServiceLoginScreenState extends State<ServiceLoginScreen> {
       } else {
         await secureStorage.write(key: "jwt_token", value: token);
         await secureStorage.write(key: "authToken", value: token);
-        await secureStorage.write(
-            key: "userId", value: user["id"].toString());
-        await secureStorage.write(
-            key: "userRole", value: "service_center");
+        await secureStorage.write(key: "userId", value: user["id"].toString());
+        await secureStorage.write(key: "userRole", value: "service_center");
       }
 
       // 🚀 Navigate
@@ -417,7 +413,7 @@ class _ServiceLoginScreenState extends State<ServiceLoginScreen> {
   // =====================================================
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    final Color primary = Colors.purple;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -480,7 +476,6 @@ class _ServiceLoginScreenState extends State<ServiceLoginScreen> {
                   ),
                 ),
               ),
-
               Positioned(
                 top: 10,
                 left: 1,
@@ -497,7 +492,6 @@ class _ServiceLoginScreenState extends State<ServiceLoginScreen> {
                   },
                 ),
               ),
-
               Positioned(
                 top: 55,
                 left: 70,
@@ -517,8 +511,7 @@ class _ServiceLoginScreenState extends State<ServiceLoginScreen> {
         // ====================== BODY ======================
         Expanded(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
             child: Column(
               children: [
                 Image.asset(
@@ -527,7 +520,6 @@ class _ServiceLoginScreenState extends State<ServiceLoginScreen> {
                   height: 220,
                 ),
                 const SizedBox(height: 15),
-
                 Form(
                   key: _formKey,
                   child: Column(
@@ -539,18 +531,15 @@ class _ServiceLoginScreenState extends State<ServiceLoginScreen> {
                           prefixIcon: Icon(Icons.email_outlined),
                           border: OutlineInputBorder(),
                         ),
-                        validator: (v) =>
-                            v!.isEmpty ? "Enter email" : null,
+                        validator: (v) => v!.isEmpty ? "Enter email" : null,
                       ),
                       const SizedBox(height: 16),
-
                       TextFormField(
                         controller: _password,
                         obscureText: !_showPass,
                         decoration: InputDecoration(
                           labelText: "Password",
-                          prefixIcon:
-                              const Icon(Icons.lock_outline),
+                          prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
                             icon: Icon(_showPass
                                 ? Icons.visibility_off
@@ -561,29 +550,24 @@ class _ServiceLoginScreenState extends State<ServiceLoginScreen> {
                           ),
                           border: const OutlineInputBorder(),
                         ),
-                        validator: (v) =>
-                            v!.isEmpty ? "Enter password" : null,
+                        validator: (v) => v!.isEmpty ? "Enter password" : null,
                       ),
                       const SizedBox(height: 25),
-
                       _loading
                           ? const CircularProgressIndicator()
                           : ElevatedButton(
                               onPressed: _login,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: primary,
-                                minimumSize:
-                                    const Size(double.infinity, 50),
+                                minimumSize: const Size(double.infinity, 50),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
                               child: const Text(
                                 "Login",
                                 style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white),
+                                    fontSize: 16, color: Colors.white),
                               ),
                             ),
                     ],

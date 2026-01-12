@@ -2,13 +2,16 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile/mobile_screens/center/calendar_activities.dart';
 
 import 'package:mobile/services/token_service.dart';
 import 'package:mobile/shared_screens/signin_screen.dart';
-import 'package:mobile/web_screens/doctor/ShowDoctorProfileScreen.dart';
 import 'package:mobile/web_screens/doctor/doctor_hours_screen.dart';
 
-const Color purple = Color(0xFF7B1FA2);
+// صفحاتك
+import 'doctorStudentsScreenForDoctor.dart';
+import 'doctorMessagesScreen.dart';
+import 'ShowDoctorProfileScreen.dart';
 
 class DoctorHomeWeb extends StatefulWidget {
   const DoctorHomeWeb({super.key});
@@ -18,35 +21,25 @@ class DoctorHomeWeb extends StatefulWidget {
 }
 
 class _DoctorHomeWebState extends State<DoctorHomeWeb> {
-  bool _ready = false;
-
   // ===============================
-  // 🌍 Base URL
+  // 🌍 Base URL (Web vs Mobile)
   // ===============================
   String get baseUrl =>
       kIsWeb ? "http://localhost:5000" : "http://10.0.2.2:5000";
 
-  // NAV
-  int _selectedPage = 0;
-
-  // DOCTOR DATA
-  int? doctorId;
-  int? serviceCenterId;
+  // Doctor Data
   String fullName = "Doctor";
-  String email = "";
+  String email = "Loading...";
   String? photoUrl;
+  int? serviceCenterId;
 
-  // COUNTERS
-  int unreadNotifCount = 0;
+  // IDs
+  int? doctorId;
 
-  final List<String> menuItems = [
-    "Dashboard",
-    "Messages",
-    "Students",
-    "Hours",
-    "Notifications",
-    "Profile",
-  ];
+  // UI State
+  int _selectedIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _loadingProfile = true;
 
   @override
   void initState() {
@@ -59,9 +52,8 @@ class _DoctorHomeWebState extends State<DoctorHomeWeb> {
   // =====================================================
   Future<void> _init() async {
     await _fetchDoctorProfile();
-    await _fetchUnreadNotificationsCount();
     if (!mounted) return;
-    setState(() => _ready = true);
+    setState(() => _loadingProfile = false);
   }
 
   // =====================================================
@@ -70,12 +62,23 @@ class _DoctorHomeWebState extends State<DoctorHomeWeb> {
   Future<void> _fetchDoctorProfile() async {
     try {
       final token = await TokenService.getToken();
-      final userId = await TokenService.getUserId();
+      final userId = await TokenService.getUserIdFixed();
 
-      if (token == null || userId == null) return;
+      if (token == null || userId == null) {
+        debugPrint("⚠ No token/userId -> redirect to signin");
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const SigninScreen()),
+        );
+        return;
+      }
 
+      doctorId = userId;
+
+      final url = Uri.parse("$baseUrl/api/doctor/profile/$userId");
       final res = await http.get(
-        Uri.parse("$baseUrl/api/doctor/profile/$userId"),
+        url,
         headers: {
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",
@@ -83,7 +86,7 @@ class _DoctorHomeWebState extends State<DoctorHomeWeb> {
       );
 
       if (res.statusCode != 200) {
-        debugPrint("❌ Profile error ${res.statusCode}");
+        debugPrint("❌ Profile error ${res.statusCode}: ${res.body}");
         return;
       }
 
@@ -91,153 +94,249 @@ class _DoctorHomeWebState extends State<DoctorHomeWeb> {
 
       if (!mounted) return;
       setState(() {
-        doctorId = data['id'];
-        serviceCenterId = data['service_center_id'];
-        fullName = data['full_name'] ?? "Doctor";
-        email = data['email'] ?? "";
+        fullName = data["full_name"] ?? "Doctor";
+        email = data["email"] ?? "Unknown";
+        serviceCenterId = data["service_center_id"];
 
-        final p = data['photo_url'];
-        photoUrl = (p != null && p.isNotEmpty) ? "$baseUrl$p" : null;
+        final serverPhoto = data['photo_url'];
+        photoUrl = (serverPhoto != null && serverPhoto.toString().isNotEmpty)
+            ? "$baseUrl$serverPhoto?t=${DateTime.now().millisecondsSinceEpoch}"
+            : null;
       });
     } catch (e) {
-      debugPrint("❌ Doctor profile exception: $e");
+      debugPrint("⚠ Error loading doctor profile: $e");
     }
   }
 
   // =====================================================
-  // UNREAD NOTIFICATIONS
+  // Bottom Nav Tap
   // =====================================================
-  Future<void> _fetchUnreadNotificationsCount() async {
-    try {
-      final token = await TokenService.getToken();
-      if (token == null) return;
+  void _onItemTapped(int index) {
+    if (index == 2) {
+      _scaffoldKey.currentState?.openEndDrawer();
+      return;
+    }
 
-      final res = await http.get(
-        Uri.parse("$baseUrl/api/notifications/unread-count"),
-        headers: {"Authorization": "Bearer $token"},
+    if (index == 1 && serviceCenterId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Still loading service center... try again."),
+        ),
       );
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (!mounted) return;
-        setState(() {
-          unreadNotifCount = int.tryParse("${data['unread']}") ?? 0;
-        });
-      }
-    } catch (e) {
-      debugPrint("❌ Notifications error: $e");
+      return;
     }
+
+    setState(() => _selectedIndex = index);
   }
 
   // =====================================================
-  // UI
+  // BUILD
   // =====================================================
   @override
   Widget build(BuildContext context) {
-    if (!_ready) {
+    if (_loadingProfile) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
+    final body = _selectedIndex == 0
+        ? _buildHomePage()
+        : _selectedIndex == 1
+            ? DoctorMessagesScreen(
+                doctorId: doctorId ?? -1,
+                serviceCenterId: serviceCenterId ?? -1,
+              )
+            : const SizedBox();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F8),
-      body: Row(
+      key: _scaffoldKey,
+      endDrawer: _buildDrawer(),
+      backgroundColor: const Color(0xFFF7F3FB),
+      body: body,
+
+      // ✅ Web NavigationBar مرتب
+      bottomNavigationBar: NavigationBar(
+        height: 64,
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onItemTapped,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home), label: "Home"),
+          NavigationDestination(icon: Icon(Icons.message), label: "Messages"),
+          NavigationDestination(icon: Icon(Icons.menu), label: "Menu"),
+        ],
+      ),
+    );
+  }
+
+  // =====================================================
+  // HOME PAGE (مرتب + Responsive)
+  // =====================================================
+  Widget _buildHomePage() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final bool isWide = w >= 980; // ✅ عشان الكروت تصير جنب بعض فعلياً
+        final double maxWidth = 1180;
+
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isWide ? 28 : 16,
+                  vertical: 26,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildHeaderWeb(isWide: isWide),
+                    const SizedBox(height: 16),
+                    _buildSearchBarWeb(),
+                    const SizedBox(height: 18),
+
+                    // ✅ الكروت جنب بعض على الواسع
+                    _buildFeatureRowWeb(isWide: isWide),
+
+                    const SizedBox(height: 18),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // =====================================================
+  // HEADER (مرتب للويب) + ✅ ربط الكاليندر
+  // =====================================================
+  Widget _buildHeaderWeb({required bool isWide}) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isWide ? 26 : 18,
+        vertical: isWide ? 22 : 18,
+      ),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7B1FA2), Color(0xFF9C27B0)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.purple.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          )
+        ],
+      ),
+      child: Row(
         children: [
-          _buildSidebar(),
           Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTopBar(),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(30),
-                    child: _buildPages(), // 👈 IndexedStack
+                const Text(
+                  "Welcome!",
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  fullName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isWide ? 28 : 22,
+                    fontWeight: FontWeight.w900,
                   ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
             ),
           ),
+
+          // ✅ زر الكاليندر مربوط
+          IconButton(
+            tooltip: "Activities Calendar",
+            icon: const Icon(Icons.calendar_today, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CalendarActivitiesScreen(),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(width: 8),
+
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () async {
+              if (doctorId == null) return;
+
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ShowDoctorProfileScreen(doctorId: doctorId!),
+                ),
+              );
+              _fetchDoctorProfile();
+            },
+            child: CircleAvatar(
+              radius: 22,
+              backgroundImage:
+                  photoUrl != null ? NetworkImage(photoUrl!) : null,
+              backgroundColor: Colors.white.withOpacity(0.22),
+              child: photoUrl == null
+                  ? const Icon(Icons.person, color: Colors.white)
+                  : null,
+            ),
+          ),
         ],
       ),
     );
   }
 
   // =====================================================
-  // SIDEBAR
+  // SEARCH BAR (Web Style)
   // =====================================================
-  Widget _buildSidebar() {
+  Widget _buildSearchBarWeb() {
     return Container(
-      width: 250,
-      padding: const EdgeInsets.symmetric(vertical: 30),
-      decoration: const BoxDecoration(
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(2, 0)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
         ],
       ),
-      child: Column(
+      child: const Row(
         children: [
-          const Text(
-            "UNISERVE",
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: purple,
-            ),
-          ),
-          const SizedBox(height: 40),
+          Icon(Icons.search, color: Colors.purple),
+          SizedBox(width: 10),
           Expanded(
-            child: ListView.builder(
-              itemCount: menuItems.length,
-              itemBuilder: (_, i) {
-                final active = _selectedPage == i;
-                return InkWell(
-                  onTap: () => setState(() => _selectedPage = i),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 14, horizontal: 20),
-                    color: active ? purple.withOpacity(0.12) : null,
-                    child: Row(
-                      children: [
-                        Icon(Icons.circle,
-                            size: 10,
-                            color: active ? purple : Colors.grey),
-                        const SizedBox(width: 14),
-                        Text(
-                          menuItems[i],
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: active ? purple : Colors.black87,
-                            fontWeight:
-                                active ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: purple,
-                minimumSize: const Size(double.infinity, 48),
-              ),
-              onPressed: () async {
-                await TokenService.clear();
-                if (!mounted) return;
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SigninScreen()),
-                );
-              },
-              icon: const Icon(Icons.logout, color: Colors.white),
-              label:
-                  const Text("Logout", style: TextStyle(color: Colors.white)),
+            child: Text(
+              "Search student or lesson...",
+              style: TextStyle(color: Colors.grey),
             ),
           ),
         ],
@@ -246,160 +345,244 @@ class _DoctorHomeWebState extends State<DoctorHomeWeb> {
   }
 
   // =====================================================
-  // TOP BAR
+  // FEATURE ROW (Students + Hours) ✅ جنب بعض على الويب
   // =====================================================
-  Widget _buildTopBar() {
-    return Container(
-      height: 75,
-      padding: const EdgeInsets.symmetric(horizontal: 30),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildFeatureRowWeb({required bool isWide}) {
+    final double cardHeight = isWide ? 190 : 170;
+
+    if (isWide) {
+      return Row(
         children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(fullName,
-                  style: const TextStyle(
-                      color: purple,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-              Text(email,
-                  style:
-                      const TextStyle(color: Colors.grey, fontSize: 13)),
+          Expanded(
+            child: SizedBox(
+              height: cardHeight,
+              child: _featureCardWeb(
+                icon: Icons.people_alt,
+                title: "Students",
+                subtitle: "View and manage your students",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DoctorStudentsScreenForDoctor(
+                        doctorName: fullName,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: SizedBox(
+              height: cardHeight,
+              child: _featureCardWeb(
+                icon: Icons.access_time_filled,
+                title: "Hours Summary",
+                subtitle: "Track and process your hours",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const DoctorHoursScreen()),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // موبايل/ضيق: تحت بعض
+    return Column(
+      children: [
+        SizedBox(
+          height: cardHeight,
+          child: _featureCardWeb(
+            icon: Icons.people_alt,
+            title: "Students",
+            subtitle: "View and manage your students",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DoctorStudentsScreenForDoctor(
+                    doctorName: fullName,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: cardHeight,
+          child: _featureCardWeb(
+            icon: Icons.access_time_filled,
+            title: "Hours Summary",
+            subtitle: "Track and process your hours",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DoctorHoursScreen()),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _featureCardWeb({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.purple.withOpacity(0.08),
+                blurRadius: 14,
+                offset: const Offset(0, 8),
+              ),
             ],
           ),
-          Row(
+          child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.chat_bubble_outline, color: purple),
-                onPressed: () => setState(() => _selectedPage = 1),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: Colors.purple),
               ),
-              _iconWithBadge(Icons.notifications_outlined, unreadNotifCount),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: () => setState(() => _selectedPage = 5),
-                child: CircleAvatar(
-                  radius: 22,
-                  backgroundImage:
-                      photoUrl != null ? NetworkImage(photoUrl!) : null,
-                  backgroundColor: purple.withOpacity(0.15),
-                  child: photoUrl == null
-                      ? const Icon(Icons.person, color: purple)
-                      : null,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.purple,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.purple,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Text(
+                  "Open",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // =====================================================
+  // DRAWER
+  // =====================================================
+  Widget _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF7B1FA2), Color(0xFF9C27B0)],
+              ),
+            ),
+            accountName: Text(fullName),
+            accountEmail: Text(email),
+            currentAccountPicture: CircleAvatar(
+              backgroundImage: photoUrl != null
+                  ? NetworkImage(photoUrl!)
+                  : const AssetImage("assets/images/uniserve_logo.jpeg")
+                      as ImageProvider,
+            ),
+          ),
+          _drawerItem(Icons.person, "Profile", onTap: () async {
+            Navigator.pop(context);
+            if (doctorId == null) return;
+
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ShowDoctorProfileScreen(doctorId: doctorId!),
+              ),
+            );
+            _fetchDoctorProfile();
+          }),
+          _drawerItem(Icons.logout, "Logout", onTap: () async {
+            Navigator.pop(context);
+            await TokenService.clear();
+            if (!mounted) return;
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const SigninScreen()),
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _iconWithBadge(IconData icon, int count) {
-    return Stack(
-      children: [
-        IconButton(
-          icon: Icon(icon, color: purple),
-          onPressed: () => setState(() => _selectedPage = 4),
-        ),
-        if (count > 0)
-          Positioned(
-            right: 4,
-            top: 4,
-            child: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                "$count",
-                style: const TextStyle(fontSize: 10, color: Colors.white),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  // =====================================================
-  // PAGES (IndexedStack 🔥)
-  // =====================================================
-  Widget _buildPages() {
-    return IndexedStack(
-      index: _selectedPage,
-      children: [
-        _dashboard(),
-        const Center(child: Text("Messages coming soon")),
-        const Center(child: Text("Students coming soon")),
-        const DoctorHoursScreen(),
-        const Center(child: Text("Notifications coming soon")),
-        doctorId == null
-            ? const Center(child: CircularProgressIndicator())
-            : ShowDoctorProfileScreen(doctorId: doctorId!),
-      ],
-    );
-  }
-
-  // =====================================================
-  // DASHBOARD
-  // =====================================================
-  Widget _dashboard() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Welcome back 👋",
-          style: TextStyle(
-              fontSize: 28, fontWeight: FontWeight.bold, color: purple),
-        ),
-        const SizedBox(height: 8),
-        const Text("Here is your doctor dashboard"),
-        const SizedBox(height: 30),
-        Row(
-          children: [
-            _statCard("Notifications", "$unreadNotifCount",
-                Icons.notifications),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _statCard(String label, String value, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(
-                color: Colors.black12,
-                blurRadius: 8,
-                offset: Offset(0, 4))
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: purple, size: 30),
-            const SizedBox(height: 12),
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 26, fontWeight: FontWeight.bold)),
-            Text(label,
-                style: const TextStyle(color: Colors.black54)),
-          ],
+  ListTile _drawerItem(
+    IconData icon,
+    String title, {
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.purple),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
         ),
       ),
+      onTap: onTap,
     );
   }
 }

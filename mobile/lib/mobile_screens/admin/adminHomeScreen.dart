@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
+import 'package:file_picker/file_picker.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -269,36 +270,87 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
     );
   }
 
-  // QUICK ACTIONS
-  // QUICK ACTIONS
   Widget _quickActions() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: GestureDetector(
-        onTap: () {
-          Navigator.pushNamed(context, "/selectDoctor");
-        },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 26,
-              backgroundColor: Colors.purple,
-              child: const Icon(Icons.people, color: Colors.white, size: 28),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              "Assign Students",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.purple,
-              ),
-            ),
-          ],
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        _action(
+          "Assign Students",
+          Icons.people,
+          () {
+            Navigator.pushNamed(context, "/selectDoctor");
+          },
         ),
-      ),
+        const SizedBox(width: 12),
+
+        _action(
+          "Import Students",
+          Icons.upload_file,
+          () {
+            _importExcel();
+          },
+        ),
+        const SizedBox(width: 12),
+
+        // ⭐ Manage Users
+        _action(
+          "Manage Users",
+          Icons.admin_panel_settings,
+          () {
+            Navigator.pushNamed(context, "/adminUsers");
+          },
+        ),
+        const SizedBox(width: 12),
+
+        // ⭐⭐ NEW: Manage Roles
+        _action(
+          "Manage Roles",
+          Icons.security, // أو Icons.rule / Icons.lock
+          () {
+            Navigator.pushNamed(context, "/adminRoles");
+          },
+        ),
+      ],
     );
+  }
+
+  Future<void> _importExcel() async {
+    try {
+      // 1️⃣ اختيار ملف Excel
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        withData: true, // ⭐ مهم للويب
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+
+      // 2️⃣ إرسال الملف للباك-إند
+      final response = await ApiService.importStudentsExcel(
+        fileBytes: file.bytes!,
+        filename: file.name,
+      );
+
+      // 3️⃣ نجاح
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "${response['message']} (Count: ${response['count']})",
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      // ❌ خطأ
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Import failed: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
 // Action Button

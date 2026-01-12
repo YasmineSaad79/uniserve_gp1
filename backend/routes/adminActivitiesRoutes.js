@@ -1,6 +1,8 @@
 //  routes/adminActivitiesRoutes.js
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const upload = multer({ dest: "uploads/" });
 
 const adminActivitiesController = require("../controllers/adminActivitiesController");
 const verifyToken = require("../middleware/verifyToken");
@@ -16,6 +18,12 @@ router.post(
   authorizePermission("canManageStudents"),
   adminActivitiesController.assignStudentToDoctor
 );
+router.get(
+  "/users/get-userid-by-uni/:uniId",
+  verifyToken,
+  authorizePermission("canManageStudents"),
+  adminActivitiesController.getUserIdByUniversityId
+);
 
 // ======================================================
 //  جلب طلاب دكتور معين
@@ -27,5 +35,11 @@ router.get(
   authorizePermission("canManageStudents"),
   adminActivitiesController.getDoctorStudents
 );
-
+router.post(
+  "/admin/import-students",
+  verifyToken,
+  authorizePermission("canManageStudents"),
+  upload.single("file"),
+  adminActivitiesController.importStudentsFromExcel
+);
 module.exports = router;

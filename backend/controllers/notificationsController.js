@@ -45,7 +45,7 @@ async function sendPushToUser(userId, title, body, data = {}) {
       //  هنا التعديل المهم
       const message = {
   tokens,
-  notification: { title, body }, // للمود الخلفي فقط
+ notification: { title, body }, // للمود الخلفي فقط
   data: {
     type: "chat",
     title: String(title),
@@ -160,7 +160,12 @@ exports.createVolunteerRequest = async (req, res) => {
     const student = await getUserBasic(studentId);
     const title = "New Volunteer Request";
     const body = `${student?.full_name || "A student"} wants to volunteer for: ${svc.title}`;
-    const payload = JSON.stringify({ activity_id, student_id: studentId });
+const payload = JSON.stringify({
+  type: "request",
+  request_type: "volunteer",
+  activity_id,
+  student_id: studentId
+});
 
     const insNotif = `
       INSERT INTO uniserve.notifications
@@ -176,10 +181,13 @@ exports.createVolunteerRequest = async (req, res) => {
       );
     });
 
-    await sendPushToUser(service_user_id, title, body, {
-      notification_id: notifId,
-      activity_id,
-    });
+   await sendPushToUser(service_user_id, title, body, {
+  type: "request",
+  request_type: "volunteer",
+  request_id: activity_id, // أو ID الطلب لو عندك واحد منفصل
+  notification_id: notifId,
+});
+
 
     res.status(201).json({
       message: "Request sent ",
@@ -267,132 +275,8 @@ exports.markAsRead = (req, res) => {
 };
 
 /** 6) Service center acts on volunteer_request notification */
-/*
-exports.actOnNotification = async (req, res) => {
-  try {
-    const serviceUserId = req.user.id;
-    const { id } = req.params;
-    const { action } = req.body;
 
-    if (!["accept", "reject"].includes(action)) {
-      return res.status(400).json({
-        message: "action must be accept or reject",
-      });
-    }
 
-    const notif = await new Promise((resolve, reject) => {
-      db.query(
-        `SELECT * FROM uniserve.notifications WHERE id = ? AND receiver_id = ? LIMIT 1`,
-        [id, serviceUserId],
-        (err, rows) => (err ? reject(err) : resolve(rows?.[0] || null))
-      );
-    });
-
-    if (!notif || notif.type !== "volunteer_request") {
-      return res
-        .status(404)
-        .json({ message: "Notification not found or not actionable" });
-    }
-
-    const payloadObj = parseJsonSafe(notif.payload);
-    const activity_id = notif.activity_id || payloadObj.activity_id;
-    const student_id = payloadObj.student_id || notif.sender_user_id;
-
-    if (!activity_id || !student_id) {
-      return res.status(400).json({
-        message: "Missing activity_id or student_id in notification payload",
-      });
-    }
-
-    const newStatus = action === "accept" ? "accepted" : "rejected";
-    await new Promise((resolve, reject) => {
-      db.query(
-        `UPDATE uniserve.volunteer_requests
-         SET status = ?, updated_at = CURRENT_TIMESTAMP
-         WHERE activity_id = ? AND student_id = ?`,
-        [newStatus, activity_id, student_id],
-        (err) => (err ? reject(err) : resolve())
-      );
-    });
-
-    await new Promise((resolve, reject) => {
-      db.query(
-        `UPDATE uniserve.notifications
-         SET status = 'acted', action = ?, acted_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [action, id],
-        (err) => (err ? reject(err) : resolve())
-      );
-    });
-
-    const svc = await getUserBasic(serviceUserId);
-    const actRow = await new Promise((resolve, reject) => {
-      db.query(
-        `SELECT title FROM uniserve.services WHERE service_id = ? LIMIT 1`,
-        [activity_id],
-        (err, rows) =>
-          err ? reject(err) : resolve(rows?.[0] || { title: "Activity" })
-      );
-    });
-
-    const title =
-      action === "accept"
-        ? "Volunteer Request Accepted"
-        : "Volunteer Request Rejected";
-    const body = `${svc?.full_name || "The center"} ${
-      action === "accept" ? "accepted" : "rejected"
-    } your request for: ${actRow.title}`;
-    const type =
-      action === "accept" ? "request_accepted" : "request_rejected";
-    const payloadBack = JSON.stringify({
-      activity_id,
-      decision_by: serviceUserId,
-    });
-
-    const insNotif = `
-      INSERT INTO uniserve.notifications
-      (type, sender_user_id, receiver_id, activity_id, title, body, payload, status, is_read)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'unread', 0)
-    `;
-    const backNotifId = await new Promise((resolve, reject) => {
-      db.query(
-        insNotif,
-        [
-          type,
-          serviceUserId,
-          student_id,
-          activity_id,
-          title,
-          body,
-          payloadBack,
-        ],
-        (err, result) =>
-          err ? reject(err) : resolve(result.insertId)
-      );
-    });
-
-    await sendPushToUser(student_id, title, body, {
-      notification_id: backNotifId,
-      activity_id,
-    });
-
-    res.json({ message: `Request ${newStatus} ` });
-  } catch (e) {
-    console.error(" actOnNotification error:", e);
-    res.status(500).json({ message: "Server error", error: e.message });
-  }
-};
-
-module.exports = {
-  registerDeviceToken: exports.registerDeviceToken,
-  createVolunteerRequest: exports.createVolunteerRequest,
-  listMyNotifications: exports.listMyNotifications,
-  unreadCount: exports.unreadCount,
-  markAsRead: exports.markAsRead,
-  actOnNotification: exports.actOnNotification,
-  sendPushToUser,
-};
-*/
 exports.actOnNotification = async (req, res) => {
   try {
     const serviceUserId = req.user.id;
@@ -513,12 +397,15 @@ exports.actOnNotification = async (req, res) => {
       action === "accept"
         ? "Your request has been accepted "
         : "Your request has been rejected ";
+const backPayload = JSON.stringify({
+  type: "request",
+  request_type: isVolunteer ? "volunteer" : "custom",
+  activity_id: isVolunteer ? activityId : null,
+  custom_request_id: !isVolunteer ? customRequestId : null,
+  student_user_id: studentId,
+  decision_by: serviceUserId,
+});
 
-    const backPayload = JSON.stringify({
-      activity_id: activityId,
-      custom_request_id: customRequestId,
-      decision_by: serviceUserId,
-    });
 
     const [result] = await db.promise().query(
       `INSERT INTO uniserve.notifications
@@ -535,9 +422,13 @@ exports.actOnNotification = async (req, res) => {
       ]
     );
 
-    await sendPushToUser(studentId, title, body, {
-      notification_id: result.insertId,
-    });
+ await sendPushToUser(studentId, title, body, {
+  type: "request",
+  request_type: isVolunteer ? "volunteer" : "custom",
+  request_id: isVolunteer ? activityId : customRequestId,
+  notification_id: result.insertId,
+});
+
 
     res.json({
       message: "Action completed successfully ",
@@ -552,3 +443,4 @@ exports.actOnNotification = async (req, res) => {
     });
   }
 };
+exports.sendPushToUser = sendPushToUser;

@@ -4,7 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 
 class RequestsPage extends StatefulWidget {
-  const RequestsPage({super.key});
+  final int? initialStudentId;
+  final int? initialActivityId;
+  final int? initialCustomRequestId;
+  final int? initialNotificationId;
+
+  const RequestsPage({
+    super.key,
+    this.initialStudentId,
+    this.initialActivityId,
+    this.initialCustomRequestId,
+    this.initialNotificationId,
+  });
 
   @override
   State<RequestsPage> createState() => _RequestsPageState();
@@ -30,15 +41,58 @@ class _RequestsPageState extends State<RequestsPage> {
   Future<void> loadRequests() async {
     setState(() => isLoading = true);
 
-    final v = await ApiService.getVolunteerRequests();
-    final c = await ApiService.getCustomRequests();
+    try {
+      final volunteerRes = await ApiService.getVolunteerRequests();
+      final customRes = await ApiService.getCustomRequests();
 
-    if (v.statusCode == 200) volunteerRequests = json.decode(v.body);
-    if (c.statusCode == 200) customRequests = json.decode(c.body);
+      if (volunteerRes.statusCode == 200) {
+        volunteerRequests = json.decode(volunteerRes.body);
+      }
 
-    setState(() {
-      isLoading = false;
-      filteredRequests = selectedTab == 0 ? volunteerRequests : customRequests;
+      if (customRes.statusCode == 200) {
+        customRequests = json.decode(customRes.body);
+      }
+
+      // 👇👇👇 هذا هو المكان الصح
+      if (widget.initialCustomRequestId != null) {
+        selectedTab = 1;
+        filteredRequests = customRequests;
+      } else {
+        selectedTab = 0;
+        filteredRequests = volunteerRequests;
+      }
+    } catch (e) {
+      print("Error loading requests: $e");
+    }
+
+    setState(() => isLoading = false);
+
+    // بعد ما تتحدد القائمة → نروح للكارد الصح
+    _jumpToRequestedCard();
+  }
+
+  void _jumpToRequestedCard() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_pageCtrl.hasClients) return;
+
+      List list = selectedTab == 0 ? volunteerRequests : customRequests;
+      int index = -1;
+
+      if (selectedTab == 0 && widget.initialActivityId != null) {
+        index = list.indexWhere(
+          (r) => r['activity_id'] == widget.initialActivityId,
+        );
+      }
+
+      if (selectedTab == 1 && widget.initialCustomRequestId != null) {
+        index = list.indexWhere(
+          (r) => r['request_id'] == widget.initialCustomRequestId,
+        );
+      }
+
+      if (index != -1) {
+        _pageCtrl.jumpToPage(index);
+      }
     });
   }
 
@@ -244,14 +298,18 @@ class _RequestsPageState extends State<RequestsPage> {
         onTap: () {
           setState(() {
             selectedTab = index;
-
-            // إعادة تعبئة القائمة حسب التاب
             filteredRequests =
                 selectedTab == 0 ? volunteerRequests : customRequests;
 
-            // لو في بحث سابق خلّيه يفلتر من جديد
             if (_searchCtrl.text.isNotEmpty) {
               _filterRequests(_searchCtrl.text);
+            }
+          });
+
+          // 🔥 هذا هو المفتاح
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_pageCtrl.hasClients && filteredRequests.isNotEmpty) {
+              _pageCtrl.jumpToPage(0);
             }
           });
         },
@@ -273,7 +331,16 @@ class _RequestsPageState extends State<RequestsPage> {
   Widget _glassCard(dynamic req) {
     final bool isVolunteer = req["activity_title"] != null;
 
-    final String name = req["student_name"] ?? "Unknown";
+    String resolveStudentName(dynamic req) {
+      if (req["student_name"] != null) return req["student_name"];
+      if (req["full_name"] != null) return req["full_name"];
+      if (req["student"]?["full_name"] != null)
+        return req["student"]["full_name"];
+      return "Unknown";
+    }
+
+    final String name = resolveStudentName(req);
+
     final String? rawPhoto = req["student_photo"];
     final String? photoUrl = rawPhoto != null
         ? "http://10.0.2.2:5000$rawPhoto?t=${DateTime.now().millisecondsSinceEpoch}"
@@ -512,6 +579,7 @@ class _RequestsPageState extends State<RequestsPage> {
 
       // حمّلي الطلبات الجديدة
       await loadRequests();
+      Navigator.pop(context, true); // 🔥 إشعار أنه صار تحديث
 
       // جدّدي الواجهة
       setState(() {});

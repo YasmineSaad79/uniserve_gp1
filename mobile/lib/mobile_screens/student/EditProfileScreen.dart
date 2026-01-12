@@ -11,12 +11,14 @@ class StudentProfileScreen extends StatefulWidget {
   final String studentId;
   final String email;
   final Function()? onProfileUpdated;
+  final bool readOnly; // ✅ جديد
 
   const StudentProfileScreen({
     super.key,
     required this.studentId,
     required this.email,
     this.onProfileUpdated,
+    this.readOnly = false, // ✅ افتراضي طالب
   });
 
   @override
@@ -178,7 +180,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                       if (!isEditing) _viewCard(),
 
                       /// EDIT MODE (fields only)
-                      if (isEditing) ...[
+                      if (isEditing && !widget.readOnly) ...[
                         const SizedBox(height: 12),
                         _editField("Full Name", fullNameController),
                         const SizedBox(height: 16),
@@ -309,7 +311,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        if (isEditing)
+        if (isEditing && !widget.readOnly)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -380,7 +382,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   /// ACTION BUTTONS
   Widget _actionButtons() {
-    if (isEditing) {
+    // ✅ إذا الدكتور (read only) → لا أزرار
+    if (widget.readOnly) {
+      return const SizedBox.shrink();
+    }
+
+    if (isEditing && !widget.readOnly) {
       return ElevatedButton(
         onPressed: updateProfile,
         style: ElevatedButton.styleFrom(
@@ -431,7 +438,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         const SizedBox(width: 16),
         Expanded(
           child: ElevatedButton(
-            onPressed: () => setState(() => isEditing = true),
+            onPressed: () {
+              if (!widget.readOnly) {
+                setState(() => isEditing = true);
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: uniPurple,
               padding: const EdgeInsets.symmetric(vertical: 14),

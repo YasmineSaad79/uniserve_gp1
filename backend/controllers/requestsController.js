@@ -141,25 +141,28 @@ exports.getCustomRequests = async (req, res) => {
         r.description,
         r.status,
         r.created_at,
+
+        s.id AS student_id,
+        u.id AS student_user_id,
         u.full_name AS student_name,
         u.photo_url AS student_photo
+
       FROM student_custom_requests r
-      JOIN users u ON u.id = r.student_id
+      JOIN students s ON s.id = r.student_id
+      JOIN users u ON u.id = s.user_id
       ORDER BY r.created_at DESC
     `;
 
     const [rows] = await db.promise().query(sql);
     res.json(rows);
   } catch (err) {
-    console.log(" Error getCustomRequests:", err);
+    console.log("Error getCustomRequests:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-//
-// ===============================
-//  Get Approved Volunteer Requests
-// ===============================
+
+
 exports.getApprovedVolunteerRequests = async (req, res) => {
   try {
     const sql = `

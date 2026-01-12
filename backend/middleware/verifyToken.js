@@ -1,4 +1,3 @@
-// middleware/verifyToken.js
 const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
@@ -11,8 +10,11 @@ module.exports = (req, res, next) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "uniserve_secret_key_2025");
-    req.user = decoded; 
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "uniserve_secret_key_2025"
+    );
+    req.user = decoded;
     next();
   } catch (err) {
     return res.status(403).json({ message: "Invalid or expired token ❌" });

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../shared/chatScreen.dart';
 import 'dart:convert';
@@ -62,12 +61,22 @@ class _HelpScreenState extends State<HelpScreen> {
 
   Future<void> _fetchMyQuestions() async {
     try {
-      final token = await _storage.read(key: 'jwt_token');
+      final token = await _storage.read(key: 'jwt_token'); // ✅ الصحيح
+
+      if (token == null) {
+        throw Exception("Token is null");
+      }
+
       final response = await http.get(
         Uri.parse(
-            'http://10.0.2.2:5000/api/help/my-questions/${widget.studentId}'),
-        headers: {"Authorization": "Bearer $token"},
+          'http://10.0.2.2:5000/api/help/my-questions/${widget.studentId}',
+        ),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
       );
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -75,7 +84,7 @@ class _HelpScreenState extends State<HelpScreen> {
           _isLoadingQuestions = false;
         });
       } else {
-        throw Exception("Failed to load questions");
+        throw Exception("Failed to load questions (${response.statusCode})");
       }
     } catch (e) {
       setState(() => _isLoadingQuestions = false);

@@ -114,6 +114,9 @@ exports.uploadSubmissionFile = async (req, res) => {
       error: err.message
     });
   }
+  console.log("BODY:", req.body);
+console.log("FILE:", req.file);
+
 };
 
 // ===============================================
@@ -154,11 +157,14 @@ exports.getStudentAllSubmissions = async (req, res) => {
     const { studentId } = req.params;
 
     const [rows] = await db.promise().query(
-      `SELECT sub.*, s.title AS activity_title
-       FROM activity_submissions sub
-       JOIN services s ON s.service_id = sub.activity_id
-       WHERE sub.student_id = ?
-       ORDER BY sub.created_at DESC`,
+      `
+      SELECT sub.*, s.title AS activity_title
+      FROM activity_submissions sub
+      JOIN services s ON s.service_id = sub.activity_id
+      WHERE sub.student_id = ?
+        AND sub.status = 'approved'
+      ORDER BY sub.created_at DESC
+      `,
       [studentId]
     );
 
@@ -168,6 +174,8 @@ exports.getStudentAllSubmissions = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
 
 exports.approveSubmission = async (req, res) => {
   try {
@@ -361,4 +369,5 @@ exports.getCenterSummary = async (req, res) => {
     console.log(" Error getCenterSummary:", err);
     res.status(500).json({ message: "Server error" });
   }
+  
 };

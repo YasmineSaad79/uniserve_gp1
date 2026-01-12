@@ -91,16 +91,18 @@ exports.getAllStudentQuestions = async (req, res) => {
 //  للطالب: جلب أسئلته فقط بناءً على studentId
 exports.getMyQuestions = async (req, res) => {
   const { studentId } = req.params;
+
   try {
-    const [rows] = await db
-      .promise()
-      .query(
-        "SELECT id, question, reply, created_at FROM student_questions WHERE student_id = ? ORDER BY created_at DESC",
-        [studentId]
-      );
+    const [rows] = await db.promise().query(
+      `SELECT id, question, reply, created_at
+       FROM student_questions
+       WHERE student_id = ?
+       ORDER BY created_at DESC`,
+      [studentId]
+    );
     res.json(rows);
   } catch (err) {
-    console.error(" Error fetching student questions:", err);
+    console.error("Error fetching student questions:", err);
     res.status(500).json({ error: "Server error" });
   }
 };

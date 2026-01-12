@@ -17,6 +17,7 @@ import 'approvals_page.dart';
 import 'center_submissions_screen.dart';
 import '../../shared_screens/signin_screen.dart';
 import 'calendar_activities.dart';
+import 'requests_page.dart';
 
 class ServiceHomeScreen extends StatefulWidget {
   const ServiceHomeScreen({super.key});
@@ -300,7 +301,7 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
   Future<void> _search(String query) async {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-    _debounce = Timer(const Duration(milliseconds: 500), () async {
+    _debounce = Timer(const Duration(milliseconds: 200), () async {
       if (query.isEmpty) {
         setState(() {
           _searchResults.clear();
@@ -315,15 +316,26 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
       });
 
       try {
+        final token = await storage.read(key: 'authToken');
+
         final url =
             Uri.parse("http://$serverIP:5000/api/search?q=$query&role=service");
-        final response = await http.get(url);
+
+        final response = await http.get(
+          url,
+          headers: {
+            "Authorization": "Bearer $token",
+            "Content-Type": "application/json",
+          },
+        );
 
         if (response.statusCode == 200) {
           final List<dynamic> data = json.decode(response.body);
           setState(() {
             _searchResults = data;
           });
+        } else {
+          print("❌ Search failed: ${response.statusCode}");
         }
       } catch (e) {
         print("❌ Error searching: $e");
@@ -453,6 +465,30 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
     );
   }
 
+  String buildImageUrl(dynamic img) {
+    if (img == null) {
+      return "http://10.0.2.2:5000/uploads/default.jpg";
+    }
+
+    final imgStr = img.toString().trim();
+
+    if (imgStr.isEmpty) {
+      return "http://10.0.2.2:5000/uploads/default.jpg";
+    }
+
+    if (imgStr.startsWith("http")) {
+      return imgStr; // URL كامل
+    }
+
+    if (imgStr.contains("uploads")) {
+      final cleanPath = imgStr.substring(imgStr.indexOf("uploads"));
+      return "http://10.0.2.2:5000/$cleanPath";
+    }
+
+    // اسم ملف فقط
+    return "http://10.0.2.2:5000/uploads/$imgStr";
+  }
+
   void _openSearchSheet() {
     showModalBottomSheet(
       context: context,
@@ -546,15 +582,16 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
                               itemBuilder: (context, index) {
                                 final item = _searchResults[index];
 
-                                if (_selectedFilter != "all" &&
-                                    item["type"] != _selectedFilter) {
-                                  return const SizedBox.shrink();
-                                }
+                                final itemType = item["type"] ?? "all";
+// عطلي الفلترة كلها مؤقتًا
+// if (_selectedFilter != "all" && item["type"] != _selectedFilter) {
+//   return const SizedBox.shrink();
+// }
 
                                 final type = item["type"];
-                                final imageUrl = item["image_url"] != null
-                                    ? "http://10.0.2.2:5000/${item["image_url"]}"
-                                    : "http://10.0.2.2:5000/uploads/default.jpg";
+                                final imageUrl = type == "student"
+                                    ? buildImageUrl(item["photo_url"])
+                                    : buildImageUrl(item["image_url"]);
 
                                 return Container(
                                   margin:
@@ -763,8 +800,9 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
                         icon: const Icon(Icons.calendar_month,
                             color: Colors.white),
                       ),
-                      _ServiceBell(
-                          onNotificationsUpdated: _fetchRecentRequests),
+                      ServiceBell(
+                        onNotificationsUpdated: _fetchRecentRequests,
+                      ),
                       GestureDetector(
                         onTap: () async {
                           await Navigator.of(context).push(PageRouteBuilder(
@@ -830,14 +868,20 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   GestureDetector(
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      final updated = await Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const RequestsPage()),
                       );
+
+                      if (updated == true) {
+                        _fetchRecentRequests(); // 🔥 تحديث مباشر
+                      }
                     },
-                    child: const Text("See All",
-                        style: TextStyle(color: Colors.purple, fontSize: 14)),
+                    child: const Text(
+                      "See All",
+                      style: TextStyle(color: Colors.purple, fontSize: 14),
+                    ),
                   ),
                 ],
               ),
@@ -1003,9 +1047,9 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
   Widget _buildDrawer() {
     return Drawer(
       backgroundColor: Colors.white,
-      child: ListView(
-        padding: EdgeInsets.zero,
+      child: Column(
         children: [
+          // ===== HEADER =====
           GestureDetector(
             onTap: () {
               Navigator.pop(context);
@@ -1020,34 +1064,36 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
               );
             },
             child: UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF7B1FA2), Color(0xFF9C27B0)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              accountName: Text(fullName,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 18)),
+              decoration: const BoxDecoration(color: Colors.purple),
+              accountName: Text(fullName),
               accountEmail: Text(email),
               currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
                 backgroundImage:
-                    (photoUrl != null) ? NetworkImage(photoUrl!) : null,
-                child: (photoUrl == null)
-                    ? const Icon(Icons.person, color: Colors.purple, size: 30)
-                    : null,
+                    photoUrl != null ? NetworkImage(photoUrl!) : null,
               ),
             ),
           ),
-          _buildDrawerItem(Icons.upload_file, "Submissions"),
-          _buildDrawerItem(Icons.add_circle, "Add Activity"),
-          _buildDrawerItem(Icons.list_alt, "Activities"),
-          _buildDrawerItem(Icons.notifications, "Notifications"),
-          const SizedBox(height: 1),
-          SizedBox(height: MediaQuery.of(context).size.height * 0.45),
+
+          // ===== MENU ITEMS (Scrollable) =====
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _buildDrawerItem(Icons.upload_file, "Submissions"),
+                _buildDrawerItem(Icons.verified_outlined, "Approvals"),
+                _buildDrawerItem(Icons.assignment_turned_in, "Requests"),
+                _buildDrawerItem(Icons.people_alt, "Students"),
+                _buildDrawerItem(Icons.add_circle, "Add Activity"),
+                _buildDrawerItem(Icons.list_alt, "Activities"),
+                _buildDrawerItem(Icons.notifications, "Notifications"),
+              ],
+            ),
+          ),
+
+          // ===== LOGOUT (Fixed Bottom) =====
+          const Divider(),
           _buildDrawerItem(Icons.logout, "Logout"),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -1075,17 +1121,53 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
           );
           return;
         }
-        if (title == "Add Activity") {
+
+        if (title == "Approvals") {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddActivityScreen()),
+            MaterialPageRoute(
+              builder: (_) => const ApprovalsPage(),
+            ),
           );
           return;
         }
+
+        if (title == "Requests") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const RequestsPage(),
+            ),
+          );
+          return;
+        }
+
+        if (title == "Students") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const StudentsPage(),
+            ),
+          );
+          return;
+        }
+
+        if (title == "Add Activity") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AddActivityScreen(),
+            ),
+          );
+          return;
+        }
+
         if (title == "Activities") {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const ViewActivitiesScreen()),
+            MaterialPageRoute(
+              builder: (_) => const ViewActivitiesScreen(),
+            ),
           );
           return;
         }
@@ -1101,38 +1183,7 @@ class _ServiceHomeScreenState extends State<ServiceHomeScreen> {
         }
 
         if (title == "Logout") {
-          showDialog(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                title: const Text("Confirm Logout"),
-                content: const Text("Are you sure you want to log out?"),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Cancel",
-                        style: TextStyle(color: Colors.grey)),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      Navigator.pop(context);
-                      await _logout();
-                    },
-                    child: const Text(
-                      "Logout",
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
+          _logout();
           return;
         }
       },
@@ -1155,11 +1206,36 @@ class ServiceCenterNotificationsScreen extends StatefulWidget {
 }
 
 class _ServiceCenterNotificationsScreenState
-    extends State<ServiceCenterNotificationsScreen> {
+    extends State<ServiceCenterNotificationsScreen>
+    with SingleTickerProviderStateMixin {
   bool _loading = true;
   String? _error;
   List<dynamic> _items = [];
 
+  late TabController _tabController;
+
+  final List<String> _tabs = [
+    "all",
+    "activity",
+    "request",
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _tabs.length, vsync: this);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // =============================
+  // 🔄 Load notifications
+  // =============================
   Future<void> _load() async {
     try {
       setState(() {
@@ -1180,127 +1256,92 @@ class _ServiceCenterNotificationsScreenState
     }
   }
 
+  // =============================
+  // ✔ Mark as read
+  // =============================
   Future<void> _markRead(int id) async {
     try {
       await ApiService.markNotificationRead(id);
-
-      setState(() {
-        final idx = _items.indexWhere((e) => e['id'] == id);
-        if (idx != -1) {
-          _items[idx]['status'] = 'read';
+      final idx = _items.indexWhere((e) => e['id'] == id);
+      if (idx != -1) {
+        setState(() {
           _items[idx]['is_read'] = 1;
-        }
-      });
+          _items[idx]['status'] = 'read';
+        });
+      }
     } catch (_) {}
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  Future<void> _handleNotificationTap(dynamic n) async {
+    await _markRead(n['id']);
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios,
-            color: uniPurple,
-            size: 22,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFFF5F5F7),
-              Color(0xFFE5E5E8),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+    final payload = n['payload'] ?? {};
+    final notificationType = n['type'];
+
+    final activityId = payload['activity_id'];
+    final customRequestId =
+        payload['custom_request_id'] ?? payload['request_id'];
+
+    if (!mounted) return;
+
+    // Volunteer request
+    if (notificationType == 'volunteer_request' && activityId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RequestsPage(
+            initialActivityId: activityId,
           ),
         ),
-        child: Column(
-          children: [
-            const SizedBox(height: 70),
-            Text(
-              "Notifications",
-              style: TextStyle(
-                fontFamily: "Baloo",
-                fontSize: 44,
-                fontWeight: FontWeight.w700,
-                color: uniPurple,
-                shadows: [
-                  Shadow(
-                    offset: const Offset(0, 1.8),
-                    blurRadius: 5,
-                    color: uniPurple.withOpacity(0.3),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: uniPurple),
-                    )
-                  : _error != null
-                      ? Center(child: Text(_error!))
-                      : _items.isEmpty
-                          ? const Center(
-                              child: Text(
-                                "No notifications yet!",
-                                style: TextStyle(
-                                  fontFamily: "Baloo",
-                                  fontSize: 20,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _load,
-                              child: ListView.builder(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 18),
-                                itemCount: _items.length,
-                                itemBuilder: (_, i) {
-                                  final n = _items[i];
-                                  final isRead = (n['is_read'] ?? 0) == 1 ||
-                                      n['status'] == 'read';
+      );
+      return;
+    }
 
-                                  return AnimatedOpacity(
-                                    duration: const Duration(milliseconds: 250),
-                                    opacity: isRead ? 0.55 : 1,
-                                    child: Column(
-                                      children: [
-                                        _notificationItem(n, isRead),
-                                        const Divider(
-                                          height: 18,
-                                          thickness: 0.6,
-                                          color: Colors.black12,
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-            ),
-          ],
+    // Custom request
+    if ((notificationType == 'custom_request' ||
+            notificationType == 'request_accepted' ||
+            notificationType == 'request_rejected') &&
+        customRequestId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RequestsPage(
+            initialCustomRequestId: customRequestId,
+          ),
         ),
-      ),
-    );
+      );
+      return;
+    }
+
+    // fallback
   }
 
+  // =============================
+  // 🔍 Filter by tab
+  // =============================
+  List<dynamic> _filteredItems(String tab) {
+    if (tab == "all") return _items;
+
+    if (tab == "activity") {
+      return _items.where((n) {
+        return n['type'] == 'volunteer_request' || n['type'] == 'activity';
+      }).toList();
+    }
+
+    if (tab == "request") {
+      return _items.where((n) {
+        return n['type'] == 'custom_request' ||
+            n['type'] == 'request_accepted' ||
+            n['type'] == 'request_rejected';
+      }).toList();
+    }
+
+    return [];
+  }
+
+  // =============================
+  // 🧱 Notification item
+  // =============================
   Widget _notificationItem(dynamic n, bool isRead) {
     final title = n['title'] ?? 'Notification';
     final body = n['body'] ?? '';
@@ -1309,7 +1350,7 @@ class _ServiceCenterNotificationsScreenState
     final createdAt = n['created_at'] ?? "";
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 6),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(isRead ? 0.8 : 0.95),
         borderRadius: BorderRadius.circular(8),
@@ -1357,62 +1398,148 @@ class _ServiceCenterNotificationsScreenState
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Text(
-                      type,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
+                    Text(type,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade600)),
                     const SizedBox(width: 12),
-                    Text(
-                      createdAt,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
+                    Text(createdAt,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500)),
                   ],
                 ),
               ],
             ),
           ),
-          isRead
-              ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
-              : InkWell(
-                  onTap: () => _markRead(n['id']),
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Text(
-                      "Mark",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blueGrey,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
+          if (isRead)
+            const Icon(Icons.check_circle, color: Colors.green, size: 20),
         ],
       ),
     );
   }
+
+  // =============================
+  // 🧩 UI
+  // =============================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: uniPurple),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF5F5F7), Color(0xFFE5E5E8)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 70),
+            Text(
+              "Notifications",
+              style: TextStyle(
+                fontFamily: "Baloo",
+                fontSize: 44,
+                fontWeight: FontWeight.w700,
+                color: uniPurple,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 🔥 Tabs
+            TabBar(
+              controller: _tabController,
+              labelColor: uniPurple,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: uniPurple,
+              tabs: const [
+                Tab(text: "All"),
+                Tab(text: "Activities"),
+                Tab(text: "Requests"),
+              ],
+            ),
+
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: uniPurple),
+                    )
+                  : _error != null
+                      ? Center(child: Text(_error!))
+                      : TabBarView(
+                          controller: _tabController,
+                          children: _tabs.map((tab) {
+                            final list = _filteredItems(tab);
+
+                            if (list.isEmpty) {
+                              return const Center(
+                                child: Text(
+                                  "No notifications",
+                                  style: TextStyle(
+                                    fontFamily: "Baloo",
+                                    fontSize: 18,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return RefreshIndicator(
+                              onRefresh: _load,
+                              child: ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(
+                                    18, 16, 18, 0), // 🔥 المسافة من فوق
+
+                                itemCount: list.length,
+                                itemBuilder: (_, i) {
+                                  final n = list[i];
+                                  final isRead = (n['is_read'] ?? 0) == 1 ||
+                                      n['status'] == 'read';
+
+                                  return GestureDetector(
+                                    onTap: () => _handleNotificationTap(n),
+                                    child: Column(
+                                      children: [
+                                        _notificationItem(n, isRead),
+                                        const Divider(height: 18),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+/* ==========================================
+   🔔 SERVICE CENTER BELL (Notification Icon)
+========================================== */
 
-/* =============================
-   🔔 جرس الإشعارات مع البادج
-============================= */
+class ServiceBell extends StatefulWidget {
+  final VoidCallback onNotificationsUpdated;
 
-class _ServiceBell extends StatefulWidget {
-  final Function() onNotificationsUpdated;
-
-  const _ServiceBell({required this.onNotificationsUpdated});
+  const ServiceBell({super.key, required this.onNotificationsUpdated});
 
   @override
-  State<_ServiceBell> createState() => _ServiceBellState();
+  State<ServiceBell> createState() => _ServiceBellState();
 }
 
-class _ServiceBellState extends State<_ServiceBell> {
+class _ServiceBellState extends State<ServiceBell> {
   int unread = 0;
 
   @override
@@ -1424,8 +1551,9 @@ class _ServiceBellState extends State<_ServiceBell> {
   Future<void> _loadUnread() async {
     try {
       final data = await ApiService.getMyNotifications();
-      final count = data.where((n) => n['is_read'] == 0).length;
-      setState(() => unread = count);
+      setState(() {
+        unread = data.where((n) => n['is_read'] == 0).length;
+      });
     } catch (_) {}
   }
 
@@ -1443,23 +1571,28 @@ class _ServiceBellState extends State<_ServiceBell> {
                 builder: (_) => const ServiceCenterNotificationsScreen(),
               ),
             );
+
             widget.onNotificationsUpdated();
             _loadUnread();
           },
         ),
         if (unread > 0)
           Positioned(
-            right: 0,
-            top: 4,
+            right: 2,
+            top: 2,
             child: Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(5),
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.red,
               ),
               child: Text(
                 unread.toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 10),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),

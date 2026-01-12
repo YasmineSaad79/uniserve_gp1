@@ -15,7 +15,20 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((msg) => {
   console.log("🌙 Background Message:", msg);
-  self.registration.showNotification(msg.notification.title, {
-    body: msg.notification.body,
+
+  const title =
+    msg.notification?.title ||
+    msg.data?.title ||
+    "New Notification";
+
+  const body =
+    msg.notification?.body ||
+    msg.data?.body ||
+    "";
+
+  self.registration.showNotification(title, {
+    body: body,
+    icon: "/icons/icon-192.png", // اختياري
   });
 });
+

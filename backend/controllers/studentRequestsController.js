@@ -118,6 +118,7 @@ exports.createRequest = async (req, res) => {
         .json({ error: `Student with university ID ${student_id} not found` });
     }
     const studentUserId = await getStudentUserIdByInternalId(internalStudentId);
+const studentUser = await getUserBasic(studentUserId);
 
     // 2) أدخل الطلب
     const insertQuery = `
@@ -134,8 +135,10 @@ exports.createRequest = async (req, res) => {
 
     // 3) جهّز إشعار لمركز الخدمة
     const centerIds = await getServiceCenterUserIds();
-    const notifTitle = ' New Service Proposal';
-    const notifBody  = ` Srudent send a suggestion: ${title}`;
+  const notifTitle = 'New Service Proposal';
+const notifBody  = `${studentUser?.full_name || 'A student'} sent a service proposal: ${title}`;
+
+
     const payloadObj = { custom_request_id: requestId, student_user_id: studentUserId };
     const payloadStr = JSON.stringify(payloadObj);
 
@@ -143,24 +146,26 @@ exports.createRequest = async (req, res) => {
     const insNotif = `
       INSERT INTO uniserve.notifications
         (type, sender_user_id, receiver_id, activity_id, title, body, payload, status, is_read)
-      VALUES ('volunteer_request', ?, ?, NULL, ?, ?, ?, 'unread', 0)
+VALUES ('custom_request', ?, ?, NULL, ?, ?, ?, 'unread', 0)
     `;
 
-    for (const centerUserId of centerIds) {
-      await new Promise((resolve, reject) => {
-        db.query(
-          insNotif,
-          [studentUserId, centerUserId, notifTitle, notifBody, payloadStr],
-          (err) => (err ? reject(err) : resolve())
-        );
-      });
-      // 3.2) أرسل Push لكل مركز خدمة
-      await sendPushToUser(centerUserId, notifTitle, notifBody, {
-        custom_request_id: requestId,
-        student_user_id: studentUserId,
-        type: 'volunteer_request',
-      });
-    }
+   for (const centerUserId of centerIds) {
+  await new Promise((resolve, reject) => {
+    db.query(
+      insNotif,
+      [studentUserId, centerUserId, notifTitle, notifBody, payloadStr],
+      (err) => (err ? reject(err) : resolve())
+    );
+  });
+
+  // 3.2) أرسل Push لكل مركز خدمة
+  await sendPushToUser(centerUserId, notifTitle, notifBody, {
+    custom_request_id: requestId,
+    student_user_id: studentUserId,
+    type: 'custom_request',
+  });
+} // ✅ ← هذا القوس كان ناقص
+
 
     // 4) رجّع الطلب الذي تم إنشاؤه
     const selectQuery = `

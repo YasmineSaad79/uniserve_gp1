@@ -12,8 +12,7 @@ class StudentSubmissionsWeb extends StatefulWidget {
   const StudentSubmissionsWeb({super.key, required this.studentId});
 
   @override
-  State<StudentSubmissionsWeb> createState() =>
-      _StudentSubmissionsWebState();
+  State<StudentSubmissionsWeb> createState() => _StudentSubmissionsWebState();
 }
 
 const Color uniPurple = Color(0xFF7B1FA2);
@@ -45,8 +44,7 @@ class _StudentSubmissionsWebState extends State<StudentSubmissionsWeb> {
 
   Future<void> _loadAllSubmissions(int userId) async {
     try {
-      final data =
-          await ApiService.getStudentAllSubmissions(userId.toString());
+      final data = await ApiService.getStudentAllSubmissions(userId);
 
       setState(() {
         submissions = data;
@@ -147,9 +145,7 @@ class _StudentSubmissionsWebState extends State<StudentSubmissionsWeb> {
                               color: uniPurple,
                             ),
                           ),
-
                           const SizedBox(height: 8),
-
                           Text(
                             "Status: $status",
                             style: TextStyle(
@@ -160,9 +156,7 @@ class _StudentSubmissionsWebState extends State<StudentSubmissionsWeb> {
                                       : Colors.orange,
                             ),
                           ),
-
                           const SizedBox(height: 12),
-
                           if (template != null)
                             ListTile(
                               contentPadding: EdgeInsets.zero,
@@ -173,11 +167,8 @@ class _StudentSubmissionsWebState extends State<StudentSubmissionsWeb> {
                                 "http://$serverIP:5000/$template",
                               ),
                             ),
-
                           if (status == "pending")
-                            _uploadButton(
-                                () => _uploadSubmission(item)),
-
+                            _uploadButton(() => _uploadSubmission(item)),
                           if (submitted != null)
                             ListTile(
                               contentPadding: EdgeInsets.zero,

@@ -46,6 +46,7 @@ class _StudentHomeState extends State<StudentHome>
   int calendarCount = 2; // (للديمو)
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final ScrollController _scrollController = ScrollController();
 
   final storage = const FlutterSecureStorage();
   final TextEditingController _searchController = TextEditingController();
@@ -54,6 +55,13 @@ class _StudentHomeState extends State<StudentHome>
   final GlobalKey _notifIconKey = GlobalKey();
   final GlobalKey _profilePicKey = GlobalKey();
   final GlobalKey _searchBarKey = GlobalKey();
+  final GlobalKey _submissionsKey = GlobalKey();
+  final GlobalKey _progressKey = GlobalKey();
+  final GlobalKey _serviceKey = GlobalKey();
+  final GlobalKey _helpKey = GlobalKey();
+  final GlobalKey _allActivitiesKey = GlobalKey();
+  final GlobalKey _recentActivitiesKey = GlobalKey();
+  final GlobalKey _recommendationsKey = GlobalKey();
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -88,6 +96,7 @@ class _StudentHomeState extends State<StudentHome>
       parent: _animationController,
       curve: Curves.easeInOut,
     );
+
     _initStudentData();
 
     _messageTimer = Timer.periodic(
@@ -100,28 +109,36 @@ class _StudentHomeState extends State<StudentHome>
       (_) => _fetchUnreadNotificationsCount(),
     );
 
-    // 🔔 إشعارات Firebase (ما فيها الجايد)
+    // 🔔 إشعارات أثناء فتح التطبيق
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final title = message.notification?.title ?? 'Notification';
       final body = message.notification?.body ?? '';
 
-      setState(() => unreadNotifCount = (unreadNotifCount + 1));
+      setState(() => unreadNotifCount++);
 
       try {
         await _audioPlayer.play(AssetSource('sounds/message_alert.mp3'));
       } catch (_) {}
 
-      // ✨ نستخدم الإشعار العائم بدل الـ Dialog
       await Notifications.showSimple(title, body);
     });
 
+    // 🔔 عند الضغط على الإشعار
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const StudentNotificationsScreen(serverIP: serverIP),
-        ),
-      );
+      final data = message.data;
+
+      if (data.isNotEmpty) {
+        await _handleStudentNotificationTap(data);
+      } else {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                const StudentNotificationsScreen(serverIP: serverIP),
+          ),
+        );
+      }
+
       _fetchUnreadNotificationsCount();
     });
   }
@@ -209,6 +226,23 @@ class _StudentHomeState extends State<StudentHome>
       await _fetchUnreadNotificationsCount();
     }
     print("🔥 DEBUG userId in StudentHome = $userId");
+  }
+
+  ContentAlign _smartAlign(GlobalKey key) {
+    final context = key.currentContext;
+    if (context == null) return ContentAlign.bottom;
+
+    final box = context.findRenderObject() as RenderBox;
+    final position = box.localToGlobal(Offset.zero);
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // لو العنصر تحت نص الشاشة → اعرض الشرح فوقه
+    if (position.dy > screenHeight * 0.6) {
+      return ContentAlign.top;
+    }
+
+    // غير هيك → اعرضه تحته
+    return ContentAlign.bottom;
   }
 
   void _showTutorial() {
@@ -357,9 +391,6 @@ class _StudentHomeState extends State<StudentHome>
           ],
         ),
 
-        // 🎯 4. صورة البروفايل
-        // 🎯 4. صورة البروفايل
-        // 🎯 4. صورة البروفايل
         TargetFocus(
           identify: "profilePic",
           keyTarget: _profilePicKey,
@@ -397,7 +428,8 @@ class _StudentHomeState extends State<StudentHome>
                         borderRadius: BorderRadius.all(Radius.circular(20)),
                       ),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
+                      await _scrollTo(_submissionsKey);
                       tutorial.next();
                     },
                     child: const Text("Next"),
@@ -416,7 +448,7 @@ class _StudentHomeState extends State<StudentHome>
           radius: 10,
           contents: [
             TargetContent(
-              align: ContentAlign.top,
+              align: _smartAlign(_searchBarKey),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -425,11 +457,14 @@ class _StudentHomeState extends State<StudentHome>
                     child: Text(
                       "You can search for activities, services, or ask the AI assistant from here.",
                       style: TextStyle(
-                          color: Colors.white, fontSize: 17, height: 1.5),
+                        color: Colors.white,
+                        fontSize: 17,
+                        height: 1.5,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
@@ -439,8 +474,121 @@ class _StudentHomeState extends State<StudentHome>
                       ),
                     ),
                     onPressed: () {
-                      tutorial.finish(); // ✅ آخر خطوة، تغلق الجولة
+                      tutorial.next();
                     },
+                    child: const Text("Next"),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        TargetFocus(
+          identify: "quickActions",
+          keyTarget: _submissionsKey,
+          shape: ShapeLightFocus.Circle,
+          radius: 40,
+          contents: [
+            TargetContent(
+              align: _smartAlign(_searchBarKey),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "These quick actions let you access submissions, progress, services, and help instantly.",
+                    style: TextStyle(color: Colors.white, fontSize: 17),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => tutorial.next(),
+                    child: const Text("Next"),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: "allActivities",
+          keyTarget: _allActivitiesKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 20,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Tap here to explore all available volunteer activities.",
+                    style: TextStyle(color: Colors.white, fontSize: 17),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => tutorial.next(),
+                    child: const Text("Next"),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        TargetFocus(
+          identify: "recentActivities",
+          keyTarget: _recentActivitiesKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 16,
+          contents: [
+            TargetContent(
+              align: _smartAlign(_searchBarKey),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Here you can see your most recent activities and their current status.",
+                    style: TextStyle(color: Colors.white, fontSize: 17),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => tutorial.next(),
+                    child: const Text("Next"),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        TargetFocus(
+          identify: "recommendations",
+          keyTarget: _recommendationsKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 16,
+          contents: [
+            TargetContent(
+              align: _smartAlign(_searchBarKey),
+              child: Column(
+                children: [
+                  const Text(
+                    "These recommendations are personalized for you based on your activity and interests.",
+                    style: TextStyle(color: Colors.white, fontSize: 17),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => tutorial.finish(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.deepPurple,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
                     child: const Text("Finish"),
                   ),
                 ],
@@ -493,44 +641,33 @@ class _StudentHomeState extends State<StudentHome>
       });
 
       try {
-        final url =
-            Uri.parse("http://$serverIP:5000/api/search?q=$query&role=student");
-        final response = await http.get(url);
+        final token = await storage.read(key: 'authToken');
+
+        final url = Uri.parse(
+          "http://$serverIP:5000/api/search?q=$query&role=student",
+        );
+
+        final response = await http.get(
+          url,
+          headers: {
+            "Authorization": "Bearer $token",
+            "Content-Type": "application/json",
+          },
+        );
 
         if (response.statusCode == 200) {
           final decoded = json.decode(response.body);
-
-          // 🧠 إذا الذكاء رجّع نص فقط
-          if (decoded is Map && decoded.containsKey("message")) {
-            setState(() {
-              _searchResults = [
-                {"name": decoded["message"], "type": "ai_suggestion"}
-              ];
-            });
-          }
-          // 🧠 إذا الذكاء رجّع قائمة من النتائج
-          else if (decoded is List) {
-            setState(() {
-              _searchResults = decoded;
-            });
-          }
-          // 🧠 fallback: جرّب مفتاح "results"
-          else if (decoded is Map && decoded.containsKey("results")) {
-            setState(() {
-              _searchResults =
-                  List<Map<String, dynamic>>.from(decoded["results"]);
-            });
-          }
+          setState(() {
+            _searchResults = decoded is List ? decoded : [];
+          });
         } else {
-          print("❌ AI Error: ${response.statusCode}");
+          print("❌ Search failed: ${response.statusCode}");
         }
       } catch (e) {
         print("❌ Error searching: $e");
       }
 
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     });
   }
 
@@ -774,23 +911,30 @@ class _StudentHomeState extends State<StudentHome>
                                 }
 
                                 // 🖼️ تجهيز رابط الصورة (مع معالجة المسارات المطلقة)
-                                String imageUrl = "";
-                                if (item["image_url"] != null &&
-                                    item["image_url"].toString().isNotEmpty) {
-                                  final img = item["image_url"].toString();
-                                  if (img.contains("uploads")) {
-                                    // 🔹 استخدم فقط الجزء من كلمة uploads وما بعدها
-                                    final cleanPath =
-                                        img.substring(img.indexOf("uploads"));
+                                String imageUrl;
+
+                                final img = item["image_url"];
+
+                                if (img != null &&
+                                    img.toString().trim().isNotEmpty) {
+                                  final imgStr = img.toString();
+
+                                  if (imgStr.startsWith("http")) {
+                                    // URL كامل
+                                    imageUrl = imgStr;
+                                  } else if (imgStr.contains("uploads")) {
+                                    // مسار من السيرفر
+                                    final cleanPath = imgStr
+                                        .substring(imgStr.indexOf("uploads"));
                                     imageUrl =
                                         "http://10.0.2.2:5000/$cleanPath";
                                   } else {
-                                    // 🔹 fallback في حال المسار غير معروف
+                                    // اسم ملف فقط
                                     imageUrl =
-                                        "http://10.0.2.2:5000/uploads/default.jpg";
+                                        "http://10.0.2.2:5000/uploads/$imgStr";
                                   }
                                 } else {
-                                  // 🔹 fallback في حال الصورة فارغة
+                                  // fallback
                                   imageUrl =
                                       "http://10.0.2.2:5000/uploads/default.jpg";
                                 }
@@ -1257,8 +1401,25 @@ class _StudentHomeState extends State<StudentHome>
     );
   }
 
+  Future<void> _scrollTo(GlobalKey key) async {
+    final context = key.currentContext;
+    if (context == null) return;
+
+    await Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+      alignment: 0.2,
+    );
+
+    // ننتظر شوي قبل الخطوة التالية
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
   Widget _buildHomeContent() {
     return SingleChildScrollView(
+      controller: _scrollController, // ✅ مهم
+
       physics: const BouncingScrollPhysics(),
       child: Padding(
         padding: const EdgeInsets.only(top: 30, left: 16, right: 16),
@@ -1410,6 +1571,8 @@ class _StudentHomeState extends State<StudentHome>
 
             Center(
               child: GestureDetector(
+                key: _searchBarKey, // ⭐⭐⭐ هذا هو الحل
+
                 onTap: _openSearchSheet, // ← هي أهم خطوة
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -1488,6 +1651,7 @@ class _StudentHomeState extends State<StudentHome>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _circleFeature(
+                    key: _submissionsKey,
                     icon: Icons.upload_file,
                     label: "Submissions",
                     colors: [Color(0xFFFFB6C1), Color(0xFFFF8DA1)],
@@ -1503,6 +1667,7 @@ class _StudentHomeState extends State<StudentHome>
                     },
                   ),
                   _circleFeature(
+                    key: _progressKey,
                     icon: Icons.bar_chart,
                     label: "Progress",
                     colors: [Color(0xFF9C4DFF), Color(0xFF7A28F2)],
@@ -1519,12 +1684,14 @@ class _StudentHomeState extends State<StudentHome>
                     },
                   ),
                   _circleFeature(
+                    key: _serviceKey,
                     icon: Icons.edit_document,
                     label: "Service",
                     colors: [Color(0xFF4DEB8A), Color(0xFF2CC76A)],
                     onTap: _showRequestsOptions,
                   ),
                   _circleFeature(
+                    key: _helpKey,
                     icon: Icons.help_center_outlined,
                     label: "Help",
                     colors: [Color(0xFF4DB6FF), Color(0xFF1E88E5)],
@@ -1574,6 +1741,7 @@ class _StudentHomeState extends State<StudentHome>
                   // 🔮 زر ALL ACTIVITIES داخل نفس الكرت
                   // ----------------------------------
                   GestureDetector(
+                    key: _allActivitiesKey,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -1656,6 +1824,7 @@ class _StudentHomeState extends State<StudentHome>
                   // ----------------------------------
 
                   GestureDetector(
+                    key: _recentActivitiesKey,
                     onTap: () {
                       setState(() => _expanded = !_expanded);
                     },
@@ -1691,6 +1860,7 @@ class _StudentHomeState extends State<StudentHome>
             // ===========================
             const SizedBox(height: 10),
             Text(
+              key: _recommendationsKey,
               "Recommended for you",
               style: TextStyle(
                 fontSize: 20,
@@ -1788,7 +1958,6 @@ class _StudentHomeState extends State<StudentHome>
       );
     }
     print("🔥 recent count = ${items.length}");
-
 
 // -------------------------
     return SizedBox(
@@ -1952,12 +2121,16 @@ class _StudentHomeState extends State<StudentHome>
   //-----------------------------------------------------------------------------
 
   Widget _circleFeature({
+    Key? key, // ✅ هذا هو الحل
+
     required IconData icon,
     required String label,
     required List<Color> colors, // ← رح نتجاهل الـ colors
     required VoidCallback onTap,
   }) {
     return GestureDetector(
+      key: key, // ⭐⭐⭐ هذا السطر هو المهم
+
       onTap: onTap,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -2129,6 +2302,85 @@ class _StudentHomeState extends State<StudentHome>
               Future.delayed(const Duration(milliseconds: 300), () {
                 _showTutorial(); // ✅ يشغل الجولة
               });
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.upload_file, color: Colors.deepPurple),
+            title: const Text("My Submissions",
+                style: TextStyle(color: Colors.deepPurple)),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      StudentSubmissionScreen(studentId: widget.studentId),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.bar_chart, color: Colors.deepPurple),
+            title: const Text("My Progress",
+                style: TextStyle(color: Colors.deepPurple)),
+            onTap: () async {
+              Navigator.pop(context);
+              final studentUniId = await _extractStudentUniId();
+              if (studentUniId == null) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MyProgressScreen(studentUniId: studentUniId),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_document, color: Colors.deepPurple),
+            title: const Text("My Requests",
+                style: TextStyle(color: Colors.deepPurple)),
+            onTap: () {
+              Navigator.pop(context);
+              _showRequestsOptions();
+            },
+          ),
+          ListTile(
+            leading:
+                const Icon(Icons.message_outlined, color: Colors.deepPurple),
+            title: const Text("Messages",
+                style: TextStyle(color: Colors.deepPurple)),
+            onTap: () {
+              Navigator.pop(context);
+              if (serviceCenterId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StudentMessagesScreen(
+                      studentId: widget.studentId,
+                      serviceCenterId: serviceCenterId!,
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.calendar_today, color: Colors.deepPurple),
+            title: const Text("Calendar",
+                style: TextStyle(color: Colors.deepPurple)),
+            onTap: () {
+              Navigator.pop(context);
+              _openCalendarPage();
+            },
+          ),
+          ListTile(
+            leading:
+                const Icon(Icons.notifications_none, color: Colors.deepPurple),
+            title: const Text("Notifications",
+                style: TextStyle(color: Colors.deepPurple)),
+            onTap: () {
+              Navigator.pop(context);
+              _openNotificationsPage();
             },
           ),
           const Spacer(),
@@ -2311,5 +2563,62 @@ class _StudentHomeState extends State<StudentHome>
     );
     // ممكن لاحقاً نعمل refresh لعدد الديدلاينز:
     // await _fetchCalendarDueCount();
+  }
+
+  Future<void> _handleStudentNotificationTap(Map<String, dynamic> n) async {
+    final type = n['type'];
+
+    if (!mounted) return;
+
+    switch (type) {
+      // 💬 رسالة
+      case 'message':
+        if (serviceCenterId != null) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StudentMessagesScreen(
+                studentId: widget.studentId,
+                serviceCenterId: serviceCenterId!,
+              ),
+            ),
+          );
+          _fetchUnreadMessagesCount();
+        }
+        break;
+
+      // 📝 طلب (Request approved / rejected)
+      case 'request':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ViewRequestsScreen(
+              studentId: widget.studentId,
+            ),
+          ),
+        );
+        break;
+
+      // 📢 نشاط
+      case 'activity':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const ViewActivitiesScreen(isStudent: true),
+          ),
+        );
+        break;
+
+      // ❓ افتراضي
+      default:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                const StudentNotificationsScreen(serverIP: serverIP),
+          ),
+        );
+        break;
+    }
   }
 }

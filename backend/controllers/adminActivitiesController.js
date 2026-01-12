@@ -3,6 +3,9 @@
 // ============================
 
 const db = require("../db");
+const XLSX = require("xlsx");
+const fs = require("fs");
+const path = require("path");
 
 // ============================
 //  Admin: ربط طالب مع دكتور
@@ -63,6 +66,35 @@ exports.assignStudentToDoctor = async (req, res) => {
     return res.status(500).json({ message: "Server error " });
   }
 };
+// ============================
+// Get userId by student university ID
+// ============================
+exports.getUserIdByUniversityId = async (req, res) => {
+  try {
+    const { uniId } = req.params;
+
+    const [rows] = await db.promise().query(
+      `
+      SELECT u.id AS user_id
+      FROM students s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.student_id = ?
+      `,
+      [uniId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    return res.status(200).json({
+      user_id: rows[0].user_id,
+    });
+  } catch (err) {
+    console.error("Error getUserIdByUniversityId:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
 
 // ============================
 //  Admin: جلب طلاب دكتور معيّن
@@ -113,3 +145,63 @@ exports.getDoctorStudents = async (req, res) => {
     return res.status(500).json({ message: "Server error " });
   }
 };
+// ============================
+//  Admin: Import students from Excel
+// ============================
+exports.importStudentsFromExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        message: "No Excel file uploaded",
+      });
+    }
+
+    // قراءة ملف الإكسل
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    if (!rows.length) {
+      return res.status(400).json({
+        message: "Excel file is empty",
+      });
+    }
+
+    // استخراج الإيميلات
+    const emails = rows
+      .map((r) => r.email)
+      .filter((e) => typeof e === "string" && e.includes("@"));
+
+    if (!emails.length) {
+      return res.status(400).json({
+        message: "No valid emails found in Excel",
+      });
+    }
+
+    // حفظهم بملف JSON (whitelist)
+    const dataDir = path.join(__dirname, "../data");
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir);
+    }
+
+    const filePath = path.join(dataDir, "allowed_students.json");
+
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify({ allowedEmails: emails }, null, 2)
+    );
+
+    return res.status(200).json({
+      message: "Students imported successfully",
+      count: emails.length,
+    });
+  } catch (err) {
+    console.error("Error importing Excel:", err);
+    return res.status(500).json({
+      message: "Failed to import students",
+    });
+  }
+};
+

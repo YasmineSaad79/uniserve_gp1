@@ -4,18 +4,20 @@ import 'package:mobile/services/api_service.dart';
 
 const Color uniPurple = Color(0xFF7B1FA2);
 
-class CalendarActivitiesScreen extends StatefulWidget {
-  const CalendarActivitiesScreen({super.key});
+class CalendarActivitiesScreenMobile extends StatefulWidget {
+  const CalendarActivitiesScreenMobile({super.key});
 
   @override
-  State<CalendarActivitiesScreen> createState() =>
-      _CalendarActivitiesScreenState();
+  State<CalendarActivitiesScreenMobile> createState() =>
+      _CalendarActivitiesScreenMobileState();
 }
 
-class _CalendarActivitiesScreenState extends State<CalendarActivitiesScreen> {
+class _CalendarActivitiesScreenMobileState
+    extends State<CalendarActivitiesScreenMobile> {
   Map<DateTime, List<Map<String, dynamic>>> events = {};
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  bool _loading = true;
 
   @override
   void initState() {
@@ -34,8 +36,10 @@ class _CalendarActivitiesScreenState extends State<CalendarActivitiesScreen> {
         final int activityId = item['activity_id'] ?? item['service_id'];
         final String title = item['title'] ?? '';
 
-        final DateTime start = _normalize(DateTime.parse(item['start_date']));
-        final DateTime end = _normalize(DateTime.parse(item['end_date']));
+        final DateTime start =
+            _normalize(DateTime.parse(item['start_date'].toString()));
+        final DateTime end =
+            _normalize(DateTime.parse(item['end_date'].toString()));
 
         temp[start] = [
           ...(temp[start] ?? []),
@@ -48,9 +52,17 @@ class _CalendarActivitiesScreenState extends State<CalendarActivitiesScreen> {
         ];
       }
 
-      setState(() => events = temp);
+      setState(() {
+        events = temp;
+        _loading = false;
+      });
     } catch (e) {
-      debugPrint("Calendar load error: $e");
+      setState(() => _loading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to load calendar activities")),
+        );
+      }
     }
   }
 
@@ -87,20 +99,26 @@ class _CalendarActivitiesScreenState extends State<CalendarActivitiesScreen> {
         child: Column(
           children: [
             const SizedBox(height: 90),
+
+            // 🟣 TITLE
             const Text(
               "My Calendar",
               style: TextStyle(
                 fontFamily: "Baloo",
-                fontSize: 44,
-                fontWeight: FontWeight.w700,
+                fontSize: 42,
+                fontWeight: FontWeight.bold,
                 color: uniPurple,
               ),
             ),
-            const SizedBox(height: 16),
-            _legend(),
-            const SizedBox(height: 16),
 
-            /// 📅 Calendar Card
+            const SizedBox(height: 14),
+
+            // 🔴🟢 LEGEND
+            _legend(),
+
+            const SizedBox(height: 18),
+
+            // 📅 CALENDAR CARD
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
@@ -121,12 +139,13 @@ class _CalendarActivitiesScreenState extends State<CalendarActivitiesScreen> {
             ),
 
             const SizedBox(height: 12),
+
             const Text(
               'Tap on any red day to view due submissions.',
               style: TextStyle(color: Colors.grey),
             ),
 
-            /// 📝 Events list (نفس اللوجيك)
+            // 📝 EVENTS
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(16),
@@ -180,6 +199,7 @@ class _CalendarActivitiesScreenState extends State<CalendarActivitiesScreen> {
     );
   }
 
+  // ================= CALENDAR =================
   Widget _buildCalendar() {
     return TableCalendar(
       firstDay: DateTime.utc(2020, 1, 1),
@@ -214,13 +234,17 @@ class _CalendarActivitiesScreenState extends State<CalendarActivitiesScreen> {
     );
   }
 
-  Widget _dayCell(DateTime day, bool hasDue,
-      {bool isToday = false, bool isSelected = false}) {
+  Widget _dayCell(
+    DateTime day,
+    bool hasDue, {
+    bool isToday = false,
+    bool isSelected = false,
+  }) {
     final bgColor = isSelected
         ? uniPurple.withOpacity(0.25)
         : hasDue
             ? Colors.red.withOpacity(0.15)
-            : Colors.green.withOpacity(0.10);
+            : Colors.green.withOpacity(0.12);
 
     return Container(
       margin: const EdgeInsets.all(6),
@@ -229,6 +253,7 @@ class _CalendarActivitiesScreenState extends State<CalendarActivitiesScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isToday ? uniPurple : Colors.transparent,
+          width: 1.4,
         ),
       ),
       alignment: Alignment.center,
@@ -254,15 +279,53 @@ class _CalendarActivitiesScreenState extends State<CalendarActivitiesScreen> {
     );
   }
 
+  // ================= REMINDER =================
   void _addReminder({
     required int activityId,
     required DateTime date,
     required String label,
   }) {
-    // نفس كودك تمامًا
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text("Add Reminder"),
+        content: Text(
+          "Set reminder for:\n$label\non ${date.toString().split(' ')[0]}",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await ApiService.addReminder(
+                  activityId: activityId,
+                  remindDate: DateTime(date.year, date.month, date.day),
+                  note: "Reminder for $label",
+                );
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Reminder added ✅")),
+                );
+              } catch (e) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Failed to add reminder")),
+                );
+              }
+            },
+            child: const Text("Add"),
+          ),
+        ],
+      ),
+    );
   }
 }
 
+// ================= LEGEND DOT =================
 class _LegendDot extends StatelessWidget {
   final Color color;
   final String text;

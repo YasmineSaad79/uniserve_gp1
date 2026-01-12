@@ -25,7 +25,6 @@ class ApiService {
   static String get _baseUrl => "http://$_host:5000/api";
   static String get baseUrl => _baseUrl;
 
-
   static final FlutterSecureStorage _storage = const FlutterSecureStorage();
   static const storage = FlutterSecureStorage();
 
@@ -39,22 +38,70 @@ class ApiService {
     };
   }
 
-static Future<String?> _readJwtToken() async {
-  if (kIsWeb) {
-    final prefs = await SharedPreferences.getInstance();
-    final t1 = prefs.getString('authToken');
-    if (t1 != null && t1.isNotEmpty) return t1;
+// ===================================================
+// 🟣 Admin: Import Students Excel
+// ===================================================
+  static Future<Map<String, dynamic>> importStudentsExcel({
+    required Uint8List fileBytes,
+    required String filename,
+  }) async {
+    final token = await _readJwtToken();
+    if (token == null) {
+      throw Exception("No auth token found");
+    }
 
-    final t2 = prefs.getString('jwt_token');
-    return (t2 != null && t2.isNotEmpty) ? t2 : null;
-  } else {
-    final t1 = await _storage.read(key: 'authToken');
-    if (t1 != null && t1.isNotEmpty) return t1;
+    final uri = Uri.parse("$_baseUrl/users/admin/import-students");
 
-    final t2 = await _storage.read(key: 'jwt_token');
-    return (t2 != null && t2.isNotEmpty) ? t2 : null;
+    final request = http.MultipartRequest("POST", uri);
+
+    // ✅ Authorization
+    request.headers["Authorization"] = "Bearer $token";
+
+    // ✅ Excel file
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        "file",
+        fileBytes,
+        filename: filename,
+        contentType: MediaType(
+          "application",
+          "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ),
+      ),
+    );
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    if (!response.headers["content-type"]!.contains("application/json")) {
+      throw Exception("Server returned non-JSON response:\n${response.body}");
+    }
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      throw Exception(data["message"] ?? "Import failed");
+    }
   }
-}
+
+  static Future<String?> _readJwtToken() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      final t1 = prefs.getString('authToken');
+      if (t1 != null && t1.isNotEmpty) return t1;
+
+      final t2 = prefs.getString('jwt_token');
+      return (t2 != null && t2.isNotEmpty) ? t2 : null;
+    } else {
+      final t1 = await _storage.read(key: 'authToken');
+      if (t1 != null && t1.isNotEmpty) return t1;
+
+      final t2 = await _storage.read(key: 'jwt_token');
+      return (t2 != null && t2.isNotEmpty) ? t2 : null;
+    }
+  }
 
   static Future<Map<String, String>> _headers({bool json = true}) async {
     final token = await _readJwtToken();
@@ -634,12 +681,24 @@ static Future<String?> _readJwtToken() async {
 
   static Future<int?> getUserIdByStudentId(String studentId) async {
     try {
+      final token = await _readJwtToken();
+      if (token == null) {
+        throw Exception("No token found");
+      }
+
       final url = Uri.parse("$_baseUrl/student/user-id/$studentId");
-      final res = await http.get(url);
+
+      final res = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
-        return data['user_id']; // ✅ هذا هو الـ user_id اللي بدك تستخدمه
+        return data['user_id'];
       } else {
         print("⚠️ Failed to get userId from studentId: ${res.statusCode}");
         return null;
@@ -682,7 +741,12 @@ static Future<String?> _readJwtToken() async {
 
   static Future<int?> getUserIdFromUniId(String uniId) async {
     final url = Uri.parse("$_baseUrl/users/get-userid-by-uni/$uniId");
-    final res = await http.get(url);
+
+    final res = await http.get(
+      url,
+      headers: await _authHeaders(), // ✅ لازم توكن
+    );
+
     if (res.statusCode == 200) {
       return jsonDecode(res.body)["user_id"];
     }
@@ -764,6 +828,23 @@ static Future<String?> _readJwtToken() async {
     );
   }
 
+  static Future<void> sendCourseResult(int studentUserId) async {
+    final token = await getUnifiedToken();
+    final serverIP = kIsWeb ? "localhost" : "10.0.2.2";
+
+    final res = await http.post(
+      Uri.parse("http://$serverIP:5000/api/hours/send-result/$studentUserId"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception(res.body);
+    }
+  }
+
 // ===============================================
 // 🟣 Student Submission – Auto Fetch
 // يستخدمه: StudentSubmissionScreen
@@ -773,26 +854,23 @@ static Future<String?> _readJwtToken() async {
 // 🟣 Upload Submission File
 // ===============================================
 
+  static Future<http.Response> getCustomRequestSimilarity(int requestId) async {
+    final token = await getUnifiedToken(); // ✅ الحل
 
-static Future<http.Response> getCustomRequestSimilarity(int requestId) async {
-  final token = await getUnifiedToken(); // ✅ الحل
+    if (token == null) {
+      throw Exception("No auth token found");
+    }
 
-  if (token == null) {
-    throw Exception("No auth token found");
+    final url = Uri.parse('$_baseUrl/ai/center/requests/$requestId/similarity');
+
+    return await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
   }
-
-  final url =
-      Uri.parse('$_baseUrl/ai/center/requests/$requestId/similarity');
-
-  return await http.get(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-  );
-}
-
 
   static Future<Map<String, dynamic>?> getStudentSubmissionAuto(
       String studentId) async {
@@ -844,20 +922,25 @@ static Future<http.Response> getCustomRequestSimilarity(int requestId) async {
   }
 
   static Future<List<dynamic>> getStudentAllSubmissions(
-      String studentId) async {
+    int userId,
+  ) async {
     final token = await _readJwtToken();
     if (token == null) throw Exception("No token found");
 
-    final url = Uri.parse("$_baseUrl/submissions/student/$studentId/all");
+    final url = Uri.parse("$_baseUrl/submissions/student/$userId/all");
 
-    final res = await http.get(url, headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json'
-    });
+    final res = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
 
     if (res.statusCode == 200) {
       return jsonDecode(res.body);
     }
+
     return [];
   }
 
@@ -947,27 +1030,27 @@ static Future<http.Response> getCustomRequestSimilarity(int requestId) async {
   }
 */
 
-static Future<List<dynamic>> getDoctorSummary() async {
-  final token = await TokenService.getToken();
-  if (token == null) throw Exception("No token");
+  static Future<List<dynamic>> getDoctorSummary() async {
+    final token = await TokenService.getToken();
+    if (token == null) throw Exception("No token");
 
-  final serverIP = kIsWeb ? "localhost" : "10.0.2.2";
+    final serverIP = kIsWeb ? "localhost" : "10.0.2.2";
 
-  final res = await http.get(
-    Uri.parse("http://$serverIP:5000/api/hours/doctor-summary"),
-    headers: {
-      "Authorization": "Bearer $token",
-      "Content-Type": "application/json",
-    },
-  );
+    final res = await http.get(
+      Uri.parse("http://$serverIP:5000/api/hours/doctor-summary"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
 
-  if (res.statusCode != 200) {
-    throw Exception("Failed to load doctor summary");
+    if (res.statusCode != 200) {
+      throw Exception("Failed to load doctor summary");
+    }
+
+    final body = jsonDecode(res.body);
+    return body is List ? body : body['data'] ?? [];
   }
-
-  final body = jsonDecode(res.body);
-  return body is List ? body : body['data'] ?? [];
-}
 
   // ===============================
 // Admin Dashboard API
@@ -1010,229 +1093,361 @@ static Future<List<dynamic>> getDoctorSummary() async {
   // ===============================
 // 🔵 WEB: Send Message (No dart:io)
 // ===============================
-static Future<http.Response> sendMessageWeb({
-  required int senderId,
-  required int receiverId,
-  String? content,
-  Uint8List? attachmentBytes,
-  String? attachmentName,
-}) async {
-  final token = await _readJwtToken();
-  final url = Uri.parse('$_baseUrl/messages/send');
+  static Future<http.Response> sendMessageWeb({
+    required int senderId,
+    required int receiverId,
+    String? content,
+    Uint8List? attachmentBytes,
+    String? attachmentName,
+  }) async {
+    final token = await _readJwtToken();
+    final url = Uri.parse('$_baseUrl/messages/send');
 
-  final request = http.MultipartRequest("POST", url);
-  request.headers['Authorization'] = 'Bearer $token';
+    final request = http.MultipartRequest("POST", url);
+    request.headers['Authorization'] = 'Bearer $token';
 
-  request.fields['sender_id'] = senderId.toString();
-  request.fields['receiver_id'] = receiverId.toString();
-  if (content != null) request.fields['content'] = content;
+    request.fields['sender_id'] = senderId.toString();
+    request.fields['receiver_id'] = receiverId.toString();
+    if (content != null) request.fields['content'] = content;
 
-  if (attachmentBytes != null && attachmentName != null) {
-    request.files.add(
-      http.MultipartFile.fromBytes(
-        'attachment',
-        attachmentBytes,
-        filename: attachmentName,
-      ),
-    );
+    if (attachmentBytes != null && attachmentName != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'attachment',
+          attachmentBytes,
+          filename: attachmentName,
+        ),
+      );
+    }
+
+    final streamed = await request.send();
+    return http.Response.fromStream(streamed);
   }
-
-  final streamed = await request.send();
-  return http.Response.fromStream(streamed);
-}
 
 // ApiService.dart
 
-static Future<String?> getUnifiedToken() async {
-  if (kIsWeb) {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("authToken");
-  } else {
-    return await _storage.read(key: "authToken");
+  static Future<String?> getUnifiedToken() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString("authToken");
+    } else {
+      return await _storage.read(key: "authToken");
+    }
   }
-}
 
-static Future<Map<String, String>> chatHeaders() async {
-  final token = await getUnifiedToken();
-  return {
-    'Authorization': 'Bearer $token',
-    'Content-Type': 'application/json',
-  };
-}
+  static Future<Map<String, String>> chatHeaders() async {
+    final token = await getUnifiedToken();
+    return {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+  }
 // ===================================================
 // 💬 Messages – Unified Web & Mobile (NO API CHANGE)
 // ===================================================
 
-static Future<http.Response> getConversationUnified(
-  int user1,
-  int user2,
-) async {
-  final url = Uri.parse("$_baseUrl/messages/conversation/$user1/$user2");
-  return await http.get(url, headers: await chatHeaders());
-}
-
-static Future<http.Response> getUnreadGroupedUnified(int userId) async {
-  final url =
-      Uri.parse("$_baseUrl/messages/unread-grouped/$userId");
-  return await http.get(url, headers: await chatHeaders());
-}
-
-static Future<http.Response> sendMessageUnified({
-  required int senderId,
-  required int receiverId,
-  String? content,
-}) async {
-  final url = Uri.parse("$_baseUrl/messages/send");
-  return await http.post(
-    url,
-    headers: await chatHeaders(),
-    body: jsonEncode({
-      "sender_id": senderId,
-      "receiver_id": receiverId,
-      "content": content ?? "",
-    }),
-  );
-}
-
-
-
-static Future<Map<String, dynamic>> uploadSubmissionWeb({
-  required Uint8List fileBytes,
-  required String filename,
-  required String studentId,
-  required String activityId,
-}) async {
-  final token = await TokenService.getToken();
-
-  final uri = Uri.parse(
-    "${ApiService.baseUrl}/submissions/upload", // ✨ تأكدي هذا نفس route بالسيرفر
-  );
-
-  final request = http.MultipartRequest("POST", uri);
-
-  // ✅ Authorization
-  if (token != null) {
-    request.headers["Authorization"] = "Bearer $token";
+  static Future<http.Response> getConversationUnified(
+    int user1,
+    int user2,
+  ) async {
+    final url = Uri.parse("$_baseUrl/messages/conversation/$user1/$user2");
+    return await http.get(url, headers: await chatHeaders());
   }
 
-  // ✅ file
-  request.files.add(
-    http.MultipartFile.fromBytes(
-      "file",
-      fileBytes,
-      filename: filename,
-    ),
-  );
+  static Future<http.Response> getUnreadGroupedUnified(int userId) async {
+    final url = Uri.parse("$_baseUrl/messages/unread-grouped/$userId");
+    return await http.get(url, headers: await chatHeaders());
+  }
 
-  // ✅ fields
-  request.fields["student_id"] = studentId;
-  request.fields["activity_id"] = activityId;
-
-  final streamed = await request.send();
-  final response = await http.Response.fromStream(streamed);
-
-  // 🛑 إذا السيرفر رجّع HTML
-  if (!response.headers["content-type"]!.contains("application/json")) {
-    throw Exception(
-      "Server returned non-JSON response:\n${response.body}",
+  static Future<http.Response> sendMessageUnified({
+    required int senderId,
+    required int receiverId,
+    String? content,
+  }) async {
+    final url = Uri.parse("$_baseUrl/messages/send");
+    return await http.post(
+      url,
+      headers: await chatHeaders(),
+      body: jsonEncode({
+        "sender_id": senderId,
+        "receiver_id": receiverId,
+        "content": content ?? "",
+      }),
     );
   }
 
-  if (response.statusCode == 200 || response.statusCode == 201) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception("Upload failed: ${response.body}");
-  }
-}
+  static Future<Map<String, dynamic>> uploadSubmissionWeb({
+    required Uint8List fileBytes,
+    required String filename,
+    required String studentId,
+    required String activityId,
+  }) async {
+    final token = await TokenService.getToken();
 
+    final uri = Uri.parse(
+      "${ApiService.baseUrl}/submissions/upload", // ✨ تأكدي هذا نفس route بالسيرفر
+    );
+
+    final request = http.MultipartRequest("POST", uri);
+
+    // ✅ Authorization
+    if (token != null) {
+      request.headers["Authorization"] = "Bearer $token";
+    }
+
+    // ✅ file
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        "file",
+        fileBytes,
+        filename: filename,
+      ),
+    );
+
+    // ✅ fields
+    request.fields["student_id"] = studentId;
+    request.fields["activity_id"] = activityId;
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    // 🛑 إذا السيرفر رجّع HTML
+    if (!response.headers["content-type"]!.contains("application/json")) {
+      throw Exception(
+        "Server returned non-JSON response:\n${response.body}",
+      );
+    }
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Upload failed: ${response.body}");
+    }
+  }
 
 // ===========================================================
 // 🟣 WEB: Add Activity (Uint8List – NO dart:io)
 // ===========================================================
-static Future<void> addActivityWeb({
-  required String title,
-  required String description,
-  required String location,
-  required int createdBy,
-  required String startDate,
-  required String endDate,
-  required String status,
-  required Uint8List imageBytes,
-  required String imageName,
-  Uint8List? pdfBytes,
-  String? pdfName,
-}) async {
-  final token = await _readJwtToken();
-  if (token == null) {
-    throw Exception("⚠️ No JWT token found");
-  }
+  static Future<void> addActivityWeb({
+    required String title,
+    required String description,
+    required String location,
+    required int createdBy,
+    required String startDate,
+    required String endDate,
+    required String status,
+    required Uint8List imageBytes,
+    required String imageName,
+    Uint8List? pdfBytes,
+    String? pdfName,
+  }) async {
+    final token = await _readJwtToken();
+    if (token == null) {
+      throw Exception("⚠️ No JWT token found");
+    }
 
-  final uri = Uri.parse("$_baseUrl/activities");
-  final request = http.MultipartRequest("POST", uri);
+    final uri = Uri.parse("$_baseUrl/activities");
+    final request = http.MultipartRequest("POST", uri);
 
-  // ✅ Headers
-  request.headers["Authorization"] = "Bearer $token";
+    // ✅ Headers
+    request.headers["Authorization"] = "Bearer $token";
 
-  // ✅ Fields
-  request.fields["title"] = title;
-  request.fields["description"] = description;
-  request.fields["location"] = location;
-  request.fields["created_by"] = createdBy.toString();
-  request.fields["start_date"] = startDate;
-  request.fields["end_date"] = endDate;
-  request.fields["status"] = status;
+    // ✅ Fields
+    request.fields["title"] = title;
+    request.fields["description"] = description;
+    request.fields["location"] = location;
+    request.fields["created_by"] = createdBy.toString();
+    request.fields["start_date"] = startDate;
+    request.fields["end_date"] = endDate;
+    request.fields["status"] = status;
 
-  // ✅ Image (REQUIRED)
-  request.files.add(
-    http.MultipartFile.fromBytes(
-      "image",
-      imageBytes,
-      filename: imageName,
-      contentType: MediaType("image", "jpeg"),
-    ),
-  );
-
-  // ✅ PDF (OPTIONAL)
-  if (pdfBytes != null && pdfName != null) {
+    // ✅ Image (REQUIRED)
     request.files.add(
       http.MultipartFile.fromBytes(
-        "form",
-        pdfBytes,
-        filename: pdfName,
-        contentType: MediaType("application", "pdf"),
+        "image",
+        imageBytes,
+        filename: imageName,
+        contentType: MediaType("image", "jpeg"),
       ),
     );
+
+    // ✅ PDF (OPTIONAL)
+    if (pdfBytes != null && pdfName != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          "form",
+          pdfBytes,
+          filename: pdfName,
+          contentType: MediaType("application", "pdf"),
+        ),
+      );
+    }
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode != 201) {
+      throw Exception(
+        "❌ Failed to add activity (WEB): ${response.body}",
+      );
+    }
   }
 
-  final streamed = await request.send();
-  final response = await http.Response.fromStream(streamed);
-
-  if (response.statusCode != 201) {
-    throw Exception(
-      "❌ Failed to add activity (WEB): ${response.body}",
+  static Future<List<dynamic>> getServiceConversations(int myId) async {
+    final token = await TokenService.getToken();
+    final url = Uri.parse("$baseUrl/messages/unread-grouped/$myId");
+    final res = await http.get(
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
     );
+
+    if (res.statusCode == 200) {
+      final decoded = jsonDecode(res.body);
+      return decoded['data'] ?? [];
+    } else {
+      throw Exception("Failed to load conversations");
+    }
   }
-}
+  // ===============================
+// Admin Users Management
+// ===============================
 
+  static Future<List<dynamic>> getAdminUsers() async {
+    final url = Uri.parse('$_baseUrl/admin/users');
+    final res = await http.get(url, headers: await _authHeaders());
 
-static Future<List<dynamic>> getServiceConversations(int myId) async {
-  final token = await TokenService.getToken();
-  final url =
-      Uri.parse("$baseUrl/messages/unread-grouped/$myId");
-  final res = await http.get(
-    url,
-    headers: {
-      "Authorization": "Bearer $token",
-      "Content-Type": "application/json",
-    },
-  );
-
-  if (res.statusCode == 200) {
-    final decoded = jsonDecode(res.body);
-    return decoded['data'] ?? [];
-  } else {
-    throw Exception("Failed to load conversations");
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception("Failed to load users");
+    }
   }
-}
 
+  static Future<void> deactivateUser(int userId) async {
+    final url = Uri.parse('$_baseUrl/admin/users/$userId/deactivate');
+    final res = await http.put(url, headers: await _authHeaders());
+
+    if (res.statusCode != 200) {
+      throw Exception("Failed to deactivate user");
+    }
+  }
+
+  static Future<void> activateUser(int userId) async {
+    final url = Uri.parse('$_baseUrl/admin/users/$userId/activate');
+    final res = await http.put(url, headers: await _authHeaders());
+
+    if (res.statusCode != 200) {
+      throw Exception("Failed to activate user");
+    }
+  }
+
+  static Future<void> changeUserRole(int userId, String role) async {
+    final url = Uri.parse('$_baseUrl/admin/users/$userId/role');
+    final res = await http.put(
+      url,
+      headers: await _authHeaders(),
+      body: jsonEncode({"role": role}),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception("Failed to change user role");
+    }
+  }
+  // ===============================
+// 🔐 Admin Roles & Permissions
+// ===============================
+
+// 🔹 Get all roles
+  static Future<List<dynamic>> getAllRoles() async {
+    final url = Uri.parse('$_baseUrl/admin/roles');
+    final res = await http.get(url, headers: await _authHeaders());
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception("Failed to load roles");
+    }
+  }
+
+// 🔹 Get all permissions
+  static Future<List<dynamic>> getAllPermissions() async {
+    final url = Uri.parse('$_baseUrl/admin/permissions');
+    final res = await http.get(url, headers: await _authHeaders());
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception("Failed to load permissions");
+    }
+  }
+
+// 🔹 Get permissions for a specific role
+  static Future<List<dynamic>> getRolePermissions(int roleId) async {
+    final url = Uri.parse('$_baseUrl/admin/roles/$roleId/permissions');
+    final res = await http.get(url, headers: await _authHeaders());
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception("Failed to load role permissions");
+    }
+  }
+
+// 🔹 Create new role
+  static Future<void> createRole({
+    required String name,
+    String? description,
+    required List<String> permissions,
+  }) async {
+    final url = Uri.parse('$_baseUrl/admin/roles');
+    final res = await http.post(
+      url,
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        "name": name,
+        "description": description,
+        "permissions": permissions, // BY NAME ✔️
+      }),
+    );
+
+    if (res.statusCode != 201) {
+      throw Exception("Failed to create role: ${res.body}");
+    }
+  }
+
+// 🔹 Update role
+  static Future<void> updateRole({
+    required int roleId,
+    required String name,
+    String? description,
+    required List<String> permissions,
+  }) async {
+    final url = Uri.parse('$_baseUrl/admin/roles/$roleId');
+    final res = await http.put(
+      url,
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        "name": name,
+        "description": description,
+        "permissions": permissions,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception("Failed to update role: ${res.body}");
+    }
+  }
+
+// 🔹 Delete role
+  static Future<void> deleteRole(int roleId) async {
+    final url = Uri.parse('$_baseUrl/admin/roles/$roleId');
+    final res = await http.delete(url, headers: await _authHeaders());
+
+    if (res.statusCode != 200) {
+      throw Exception("Failed to delete role: ${res.body}");
+    }
+  }
 }

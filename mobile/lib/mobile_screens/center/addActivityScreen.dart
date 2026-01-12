@@ -72,13 +72,13 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
           compressQuality: 90,
           uiSettings: [
             AndroidUiSettings(
-              toolbarTitle: 'Adjust your photo',
+              toolbarTitle: 'Adjust activity image',
               toolbarColor: primaryColor,
               toolbarWidgetColor: Colors.white,
               lockAspectRatio: true,
             ),
             IOSUiSettings(
-              title: 'Adjust your photo',
+              title: 'Adjust activity image',
               aspectRatioLockEnabled: true,
             ),
           ],
@@ -87,15 +87,14 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         if (cropped != null) {
           setState(() {
             _imageFile = File(cropped.path);
-            _imageBytes = null;
           });
         }
       }
     } catch (e) {
-      debugPrint('Error picking or cropping image: $e');
+      debugPrint('Error picking image: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking or cropping image: $e')),
+        SnackBar(content: Text('Error picking image: $e')),
       );
     }
   }
@@ -517,15 +516,6 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
           ),
           Row(
             children: [
-              Expanded(
-                child: _buildTextField(
-                  _createdByController,
-                  'Created by (User ID)',
-                  'Please enter the responsible user ID',
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: _buildTextField(
                   _statusController,
